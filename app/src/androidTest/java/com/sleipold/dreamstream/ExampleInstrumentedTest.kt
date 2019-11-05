@@ -1,4 +1,4 @@
-package com.example.dreamstream
+package com.sleipold.dreamstream
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

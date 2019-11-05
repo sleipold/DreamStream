@@ -1,4 +1,4 @@
-package com.example.dreamstream
+package com.sleipold.dreamstream
 
 import org.junit.Test
 

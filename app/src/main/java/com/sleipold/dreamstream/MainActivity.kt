@@ -1,4 +1,4 @@
-package com.example.dreamstream
+package com.sleipold.dreamstream
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
