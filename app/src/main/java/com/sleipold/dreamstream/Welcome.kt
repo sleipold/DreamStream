@@ -1,15 +1,23 @@
 package com.sleipold.dreamstream
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import kotlinx.android.synthetic.main.activity_welcome.*
 
-class MainActivity : AppCompatActivity() {
+class Welcome : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_welcome)
+
+        btnStartDreamStream.setOnClickListener {
+            // start button got clicked -> open role selection activity
+            val intent = Intent(this, RoleSelection::class.java)
+            startActivity(intent)
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -22,7 +30,9 @@ class MainActivity : AppCompatActivity() {
         // onClick listener for menu
         when(item.itemId) {
             R.id.settings -> {
-                println("settings got clicked")
+                // gear icon got clicked -> open settings activity
+                val intent = Intent(this, Settings::class.java)
+                startActivity(intent)
                 return true
             }
         }
