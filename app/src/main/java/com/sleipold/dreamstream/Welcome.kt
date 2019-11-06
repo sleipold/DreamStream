@@ -23,6 +23,8 @@ class Welcome : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         // Adding menu to activity
         menuInflater.inflate(R.menu.main_menu, menu)
+        // hide home button in action bar
+        menu!!.findItem(R.id.home).isVisible = false
         return true
     }
 

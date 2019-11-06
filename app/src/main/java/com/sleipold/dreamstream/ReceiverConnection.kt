@@ -6,18 +6,16 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 
-class Settings : AppCompatActivity() {
+class ReceiverConnection : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_settings)
+        setContentView(R.layout.activity_receiver_connection)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         // Adding menu to activity
         menuInflater.inflate(R.menu.main_menu, menu)
-        // hide settings button in action bar
-        menu!!.findItem(R.id.settings).isVisible = false
         return true
     }
 
@@ -30,6 +28,13 @@ class Settings : AppCompatActivity() {
                 homeIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 // TODO: reset running connection
                 startActivity(homeIntent)
+            }
+
+            R.id.settings -> {
+                // gear icon got clicked -> open settings activity
+                val intent = Intent(this, Settings::class.java)
+                startActivity(intent)
+                return true
             }
         }
         return super.onOptionsItemSelected(item)
