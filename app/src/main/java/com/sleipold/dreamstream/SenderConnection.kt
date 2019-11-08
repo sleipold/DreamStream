@@ -24,13 +24,11 @@ import java.io.IOException
 class SenderConnection : AppCompatActivity() {
 
     internal lateinit var surfaceView: SurfaceView
-    internal lateinit var txtBarcodeValue: TextView
-    private var barcodeDetector: BarcodeDetector? = null
+    internal lateinit var txtQrCodeValue: TextView
+    private var qrCodeDetector: BarcodeDetector? = null
     private var cameraSource: CameraSource? = null
     internal lateinit var btnAction: Button
     internal var intentData = ""
-    internal var isEmail = false
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,38 +38,29 @@ class SenderConnection : AppCompatActivity() {
     }
 
     private fun initViews() {
-        txtBarcodeValue = findViewById(R.id.txtBarcodeValue)
+
+        txtQrCodeValue = findViewById(R.id.txtBarcodeValue)
         surfaceView = findViewById(R.id.surfaceView)
         btnAction = findViewById(R.id.btnAction)
 
-
         btnAction.setOnClickListener {
-            if (intentData.length > 0) {
-                /*if (isEmail)
-                    startActivity(
-                        Intent(
-                            this@SenderConnection,
-                            EmailActivity::class.java
-                        ).putExtra("email_address", intentData)
-                    )
-                else {*/
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(intentData)))
-                //}
+            if (intentData.isNotEmpty()) {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(intentData)))
             }
         }
     }
 
     private fun initialiseDetectorsAndSources() {
 
-        Toast.makeText(applicationContext, "Barcode scanner started", Toast.LENGTH_SHORT).show()
+        Toast.makeText(applicationContext, getString(R.string.qr_scanner_started), Toast.LENGTH_SHORT).show()
 
-        barcodeDetector = BarcodeDetector.Builder(this)
-            .setBarcodeFormats(Barcode.ALL_FORMATS)
+        qrCodeDetector = BarcodeDetector.Builder(this)
+            .setBarcodeFormats(Barcode.QR_CODE)
             .build()
 
-        cameraSource = CameraSource.Builder(this, barcodeDetector!!)
+        cameraSource = CameraSource.Builder(this, qrCodeDetector!!)
             .setRequestedPreviewSize(1920, 1080)
-            .setAutoFocusEnabled(true) //you should add this feature
+            .setAutoFocusEnabled(true)
             .build()
 
         surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
@@ -94,8 +83,6 @@ class SenderConnection : AppCompatActivity() {
                 } catch (e: IOException) {
                     e.printStackTrace()
                 }
-
-
             }
 
             override fun surfaceChanged(
@@ -111,42 +98,27 @@ class SenderConnection : AppCompatActivity() {
             }
         })
 
-
-        barcodeDetector!!.setProcessor(object : Detector.Processor<Barcode> {
+        qrCodeDetector!!.setProcessor(object : Detector.Processor<Barcode> {
             override fun release() {
                 Toast.makeText(
                     applicationContext,
-                    "To prevent memory leaks barcode scanner has been stopped",
+                    getString(R.string.qr_code_prevent_memory_leak),
                     Toast.LENGTH_SHORT
                 ).show()
             }
 
             override fun receiveDetections(detections: Detector.Detections<Barcode>) {
-                val barcodes = detections.detectedItems
-                if (barcodes.size() != 0) {
-
-
-                    txtBarcodeValue.post {
-                        if (barcodes.valueAt(0).email != null) {
-                            txtBarcodeValue.removeCallbacks(null)
-                            intentData = barcodes.valueAt(0).email.address
-                            txtBarcodeValue.text = intentData
-                            isEmail = true
-                            btnAction.text = "ADD CONTENT TO THE MAIL"
-                        } else {
-                            isEmail = false
-                            btnAction.text = "LAUNCH URL"
-                            intentData = barcodes.valueAt(0).displayValue
-                            txtBarcodeValue.text = intentData
-
-                        }
+                val qrCodes = detections.detectedItems
+                if (qrCodes.size() != 0) {
+                    txtQrCodeValue.post {
+                        btnAction.text = getString(R.string.connect_to_receiver)
+                        intentData = qrCodes.valueAt(0).displayValue
+                        txtQrCodeValue.text = intentData
                     }
-
                 }
             }
         })
     }
-
 
     override fun onPause() {
         super.onPause()
@@ -159,6 +131,6 @@ class SenderConnection : AppCompatActivity() {
     }
 
     companion object {
-        private val REQUEST_CAMERA_PERMISSION = 201
+        private const val REQUEST_CAMERA_PERMISSION = 201
     }
 }
