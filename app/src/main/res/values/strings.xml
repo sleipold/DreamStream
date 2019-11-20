@@ -10,4 +10,12 @@
     <string name="connect_to_receiver">Connect to receiver</string>
     <string name="qr_code_prevent_memory_leak">To prevent memory leaks QR code scanner has been stopped</string>
     <string name="qr_scanner_started">QR code scanner started</string>
+    <string name="status_searching_receiver">Searching for receiver</string>
+    <string name="status_searching_sender">Searching for sender</string>
+    <string name="status_connected_sender">Sender connected to receiver</string>
+    <string name="status_connected_receiver">Receiver connected to sender</string>
+    <string name="status_rejected_receiver">Receiver connection rejected</string>
+    <string name="status_fail_receiver">Receiver connection failed before it was accepted</string>
+    <string name="status_disconnect_sender">Sender disconnected</string>
+    <string name="status_disconnect_receiver">Receiver disconnected</string>
 </resources>
