@@ -3,7 +3,6 @@ package com.sleipold.dreamstream
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -20,6 +19,8 @@ import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
 
 import java.io.IOException
+
+const val CONNECTION_SECRET = "com.sleipold.dreamstream.MESSAGE"
 
 class SenderConnection : AppCompatActivity() {
 
@@ -45,7 +46,10 @@ class SenderConnection : AppCompatActivity() {
 
         btnAction.setOnClickListener {
             if (intentData.isNotEmpty()) {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(intentData)))
+                val intent = Intent(this, Sender::class.java).apply {
+                    putExtra(CONNECTION_SECRET, intentData)
+                }
+                startActivity(intent)
             }
         }
     }
