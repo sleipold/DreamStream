@@ -32,19 +32,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-
-        <activity
-            android:name=".ReceiverConnection"
-            android:parentActivityName=".RoleSelection" />
+        <activity android:name=".Connection" />
         <activity
             android:name=".RoleSelection"
             android:parentActivityName=".Welcome" />
-        <activity
-            android:name=".Sender"
-            android:parentActivityName=".Welcome"></activity>
-        <activity
-            android:name=".SenderConnection"
-            android:parentActivityName=".RoleSelection" />
         <activity android:name=".Settings" />
         <activity android:name=".Welcome">
             <intent-filter>
