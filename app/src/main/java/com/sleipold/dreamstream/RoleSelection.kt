@@ -14,14 +14,18 @@ class RoleSelection : AppCompatActivity() {
         setContentView(R.layout.activity_role_selection)
 
         btnRoleReceiver.setOnClickListener {
-            // role receiver button got clicked -> open receiver connection activity
-            val intent = Intent(this, ReceiverConnection::class.java)
+            // open connection activity as receiver
+            val intent = Intent(this, Connection::class.java).apply {
+                putExtra("role", "receiver")
+            }
             startActivity(intent)
         }
 
         btnRoleSender.setOnClickListener {
-            // role sender button got clicked -> open sender connection activity
-            val intent = Intent(this, SenderConnection::class.java)
+            // open connection activity as sender
+            val intent = Intent(this, Connection::class.java).apply {
+                putExtra("role","sender")
+            }
             startActivity(intent)
         }
     }
