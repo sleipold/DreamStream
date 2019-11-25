@@ -116,7 +116,7 @@ abstract class AConnection : AppCompatActivity() {
             if (update.status == PayloadTransferUpdate.Status.SUCCESS) {
                 println(
                     String.format(
-                        "onPayloadTransferUpdate(endpointId=%s, update=%s) unsuccessful", endpointId, update
+                        "onPayloadTransferUpdate(endpointId=%s, update=%s) successful", endpointId, update
                     )
                 )
             }
