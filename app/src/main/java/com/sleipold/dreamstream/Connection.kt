@@ -1,12 +1,17 @@
 package com.sleipold.dreamstream
 
+import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.WorkerThread
 import com.google.android.gms.nearby.connection.*
+import java.io.IOException
 
 class Connection : AConnection() {
 
@@ -16,6 +21,12 @@ class Connection : AConnection() {
     override val mStrategy: Strategy = Strategy.P2P_POINT_TO_POINT
 
     private var mState = State.UNKNOWN
+
+    private var mRecorder: AudioRecorder? = null
+
+    private var mAudioPlayer: AudioPlayer? = null
+
+    private var mOriginalVolume: Int = 0
 
     /* components */
     private lateinit var cCurrentState: TextView
@@ -38,7 +49,53 @@ class Connection : AConnection() {
     override fun onStart() {
         super.onStart()
 
+        // Set the media volume to max .
+        volumeControlStream = AudioManager.STREAM_MUSIC
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        mOriginalVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        audioManager.setStreamVolume(
+            AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0
+        )
+
         setState(State.SEARCHING)
+    }
+
+    override fun onStop() {
+        // Restore the original volume.
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, mOriginalVolume, 0)
+        volumeControlStream = AudioManager.USE_DEFAULT_STREAM_TYPE
+
+        // Stop all audio-related threads
+        if (isRecording()) {
+            stopRecording()
+        }
+        if (isPlaying()) {
+            stopPlaying()
+        }
+
+        // After our Activity stops, we disconnect from Nearby Connections.
+        setState(State.UNKNOWN)
+
+        super.onStop()
+    }
+
+    override fun onReceive(endpoint: Endpoint?, payload: Payload) {
+        if (payload.type == Payload.Type.STREAM) {
+            if (mAudioPlayer != null) {
+                mAudioPlayer!!.stop()
+                mAudioPlayer = null
+            }
+
+            val player = object : AudioPlayer(payload.asStream()!!.asInputStream()) {
+                @WorkerThread
+                override fun onFinish() {
+                    runOnUiThread { mAudioPlayer = null }
+                }
+            }
+            mAudioPlayer = player
+            player.start()
+        }
     }
 
     private fun setState(pState: State) {
@@ -70,6 +127,10 @@ class Connection : AConnection() {
                 stopDiscovering()
                 stopAdvertising()
                 cCurrentState.setText(R.string.state_connected)
+
+                if (mName == "sender") {
+                    startRecording()
+                }
             }
             State.UNKNOWN -> {
                 stopAllEndpoints()
@@ -142,4 +203,49 @@ class Connection : AConnection() {
         setState(State.UNKNOWN)
     }
 
+    /** Starts recording sound from the microphone and streaming it to all connected devices. */
+    private fun startRecording() {
+        println("Connection.startRecording()")
+        try {
+            val payloadPipe = ParcelFileDescriptor.createPipe()
+
+            // Send the first half of the payload (the read side) to Nearby Connections.
+            send(Payload.fromStream(payloadPipe[0]))
+
+            // Use the second half of the payload (the write side) in AudioRecorder.
+            mRecorder = AudioRecorder(payloadPipe[1])
+            mRecorder!!.start()
+        } catch (e: IOException) {
+            println("Connection.startRecording() failed $e")
+        }
+
+    }
+
+    /** Stops streaming sound from the microphone. */
+    private fun stopRecording() {
+        println("stopRecording()")
+        if (mRecorder != null) {
+            mRecorder!!.stop()
+            mRecorder = null
+        }
+    }
+
+    /** @return True if currently streaming from the microphone. */
+    private fun isRecording(): Boolean {
+        return mRecorder != null && mRecorder!!.isRecording()
+    }
+
+    /** Stops all currently streaming audio tracks. */
+    private fun stopPlaying() {
+        println("stopPlaying()")
+        if (mAudioPlayer != null) {
+            mAudioPlayer!!.stop()
+            mAudioPlayer = null
+        }
+    }
+
+    /** @return True if currently playing. */
+    private fun isPlaying(): Boolean {
+        return mAudioPlayer != null
+    }
 }

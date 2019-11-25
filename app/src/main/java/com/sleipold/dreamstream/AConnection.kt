@@ -124,7 +124,7 @@ abstract class AConnection : AppCompatActivity() {
     /* event functions which have to be implemented */
 
     /* someone has sent us data - override this method to act on the event */
-    protected fun onReceive(endpoint: Endpoint?, payload: Payload) {}
+    protected open fun onReceive(endpoint: Endpoint?, payload: Payload) {}
 
     /* event functions */
 
@@ -379,7 +379,7 @@ abstract class AConnection : AppCompatActivity() {
 
     /* helper class */
 
-    protected class Endpoint(val id: String, val name: String) {
+    class Endpoint(val id: String, val name: String) {
 
         override fun equals(other: Any?): Boolean {
             if (other is Endpoint) {
