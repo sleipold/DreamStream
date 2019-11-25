@@ -34,56 +34,53 @@ class AudioRecorder constructor(file: ParcelFileDescriptor) {
         }
 
         mAlive = true
-        mThread =
-            object : Thread() {
-                override fun run() {
-                    println("AudioRecorder Thread.run()")
-                    setThreadPriority(THREAD_PRIORITY_AUDIO)
+        val mThread = Thread {
+            println("${Thread.currentThread()} has run.")
+            setThreadPriority(THREAD_PRIORITY_AUDIO)
 
-                    val buffer = Buffer()
-                    val record = AudioRecord(
-                        MediaRecorder.AudioSource.DEFAULT,
-                        buffer.sampleRate,
-                        AudioFormat.CHANNEL_IN_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT,
-                        buffer.size
-                    )
+            val buffer = Buffer()
+            val record = AudioRecord(
+                MediaRecorder.AudioSource.DEFAULT,
+                buffer.sampleRate,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                buffer.size
+            )
 
-                    if (record.state != AudioRecord.STATE_INITIALIZED) {
-                        println("AudioRecorder Thread.run() failed")
-                        mAlive = false
-                        return
-                    }
+            if (record.state != AudioRecord.STATE_INITIALIZED) {
+                println("AudioRecorder Thread.run() failed")
+                mAlive = false
+                return@Thread
+            }
 
-                    record.startRecording()
+            record.startRecording()
 
-                    // While we're running, we'll read the bytes from the AudioRecord and write them
-                    // to our output stream.
-                    try {
-                        while (mAlive) {
-                            val len = record.read(buffer.data, 0, buffer.size)
-                            if (len >= 0 && len <= buffer.size) {
-                                mOutputStream.write(buffer.data, 0, len)
-                                mOutputStream.flush()
-                            } else {
-                                println("Unexpected length returned: $len")
-                            }
-                        }
-                    } catch (e: IOException) {
-                        println("Exception with recording stream $e")
-                    } finally {
-                        stopInternal()
-                        try {
-                            record.stop()
-                        } catch (e: IllegalStateException) {
-                            println("Failed to stop AudioRecord $e")
-                        }
-
-                        record.release()
+            // While we're running, we'll read the bytes from the AudioRecord and write them
+            // to our output stream.
+            try {
+                while (mAlive) {
+                    val len = record.read(buffer.data, 0, buffer.size)
+                    if (len >= 0 && len <= buffer.size) {
+                        mOutputStream.write(buffer.data, 0, len)
+                        mOutputStream.flush()
+                    } else {
+                        println("Unexpected length returned: $len")
                     }
                 }
+            } catch (e: IOException) {
+                println("Exception with recording stream $e")
+            } finally {
+                stopInternal()
+                try {
+                    record.stop()
+                } catch (e: IllegalStateException) {
+                    println("Failed to stop AudioRecord $e")
+                }
+
+                record.release()
             }
-        (mThread as Thread).start()
+        }
+        mThread.start()
     }
 
     private fun stopInternal() {
