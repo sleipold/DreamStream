@@ -7,7 +7,6 @@ import android.os.Process.THREAD_PRIORITY_AUDIO
 import android.os.Process.setThreadPriority
 import java.io.IOException
 import java.io.InputStream
-import kotlin.concurrent.thread
 
 /**
  * A fire-once class. When created, you must pass a {@link InputStream}. Once {@link #start()} is
@@ -38,7 +37,7 @@ open class AudioPlayer constructor(inputStream: InputStream) {
     fun start() {
         mAlive = true
         val mThread = Thread {
-            println("${Thread.currentThread()} has run.")
+            println("${Thread.currentThread()} AudioPlayer has run.")
             setThreadPriority(THREAD_PRIORITY_AUDIO)
 
             val buffer = Buffer()

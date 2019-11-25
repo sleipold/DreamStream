@@ -6,8 +6,8 @@ import android.media.MediaRecorder
 import android.os.ParcelFileDescriptor
 import android.os.Process.THREAD_PRIORITY_AUDIO
 import android.os.Process.setThreadPriority
-import java.io.IOException
-import java.io.OutputStream
+import java.io.*
+import kotlin.math.sqrt
 
 /**
  * When created, you must pass a ParcelFileDescriptor. Once start() is called, the
@@ -24,8 +24,11 @@ class AudioRecorder constructor(file: ParcelFileDescriptor) {
     @Volatile
     private var mAlive: Boolean = false
 
-    /** The background thread recording audio.  */
+    /** The background thread recording audio. */
     private var mThread: Thread? = null
+
+    /** Threshold which has to be exceeded to start recording */
+    var mAudioRecordThreshold: Int = 50
 
     fun start() {
         if (isRecording()) {
@@ -35,7 +38,7 @@ class AudioRecorder constructor(file: ParcelFileDescriptor) {
 
         mAlive = true
         val mThread = Thread {
-            println("${Thread.currentThread()} has run.")
+            println("${Thread.currentThread()} AudioRecorder has run.")
             setThreadPriority(THREAD_PRIORITY_AUDIO)
 
             val buffer = Buffer()
@@ -54,15 +57,23 @@ class AudioRecorder constructor(file: ParcelFileDescriptor) {
             }
 
             record.startRecording()
-
             // While we're running, we'll read the bytes from the AudioRecord and write them
             // to our output stream.
             try {
+                var volume: Int
                 while (mAlive) {
                     val len = record.read(buffer.data, 0, buffer.size)
+                    var sum = 0.0
                     if (len >= 0 && len <= buffer.size) {
-                        mOutputStream.write(buffer.data, 0, len)
-                        mOutputStream.flush()
+                        for (i in 0 until len) {
+                            sum += buffer.data[i] * buffer.data[i]
+                        }
+                        val amplitude = sum / len
+                        volume = sqrt(amplitude).toInt()
+                        if (volume >= mAudioRecordThreshold) {
+                            mOutputStream.write(buffer.data, 0, len)
+                            mOutputStream.flush()
+                        }
                     } else {
                         println("Unexpected length returned: $len")
                     }
@@ -108,7 +119,6 @@ class AudioRecorder constructor(file: ParcelFileDescriptor) {
     fun isRecording(): Boolean {
         return mAlive
     }
-
 
     private class Buffer : AudioBuffer() {
         override fun validSize(size: Int): Boolean {

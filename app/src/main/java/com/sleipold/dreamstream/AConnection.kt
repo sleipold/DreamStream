@@ -113,11 +113,13 @@ abstract class AConnection : AppCompatActivity() {
         }
 
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
-            println(
-                String.format(
-                    "onPayloadTransferUpdate(endpointId=%s, update=%s)", endpointId, update
+            if (update.status == PayloadTransferUpdate.Status.SUCCESS) {
+                println(
+                    String.format(
+                        "onPayloadTransferUpdate(endpointId=%s, update=%s) unsuccessful", endpointId, update
+                    )
                 )
-            )
+            }
         }
     }
 

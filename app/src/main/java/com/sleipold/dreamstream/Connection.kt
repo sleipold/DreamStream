@@ -7,9 +7,11 @@ import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.WorkerThread
+import androidx.core.view.isVisible
 import com.google.android.gms.nearby.connection.*
 import java.io.IOException
 
@@ -31,6 +33,7 @@ class Connection : AConnection() {
     /* components */
     private lateinit var cCurrentState: TextView
     private lateinit var cRoleName: TextView
+    private lateinit var cAudioRecordThreshold: SeekBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,8 +45,28 @@ class Connection : AConnection() {
         /* components */
         cCurrentState = findViewById(R.id.txtCurrState)
         cRoleName = findViewById(R.id.txtRoleName)
+        cAudioRecordThreshold = findViewById(R.id.sbAudioRecordThreshold)
 
         cRoleName.text = mName
+        cAudioRecordThreshold.isVisible = false
+
+        if (mName == "receiver") {
+            cAudioRecordThreshold.isVisible = true
+
+            cAudioRecordThreshold.setOnSeekBarChangeListener(object :
+                SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {}
+
+                override fun onStartTrackingTouch(seekBar: SeekBar) {}
+
+                override fun onStopTrackingTouch(seekBar: SeekBar) {
+                    // send audio record threshold from receiver to sender
+                    var threshold = seekBar.progress.toString()
+                    var payload = Payload.fromBytes(threshold.toByteArray())
+                    send(payload)
+                }
+            })
+        }
     }
 
     override fun onStart() {
@@ -81,20 +104,29 @@ class Connection : AConnection() {
     }
 
     override fun onReceive(endpoint: Endpoint?, payload: Payload) {
-        if (payload.type == Payload.Type.STREAM) {
-            if (mAudioPlayer != null) {
-                mAudioPlayer!!.stop()
-                mAudioPlayer = null
+        when (payload.type) {
+            Payload.Type.STREAM -> {
+                if (mAudioPlayer != null) {
+                    mAudioPlayer!!.stop()
+                    mAudioPlayer = null
+                }
+
+                val player = object : AudioPlayer(payload.asStream()!!.asInputStream()) {
+                    @WorkerThread
+                    override fun onFinish() {
+                        runOnUiThread { mAudioPlayer = null }
+                    }
+                }
+                mAudioPlayer = player
+                player.start()
             }
 
-            val player = object : AudioPlayer(payload.asStream()!!.asInputStream()) {
-                @WorkerThread
-                override fun onFinish() {
-                    runOnUiThread { mAudioPlayer = null }
+            Payload.Type.BYTES -> {
+                if (mRecorder != null) {
+                    // sending threshold from receiver to sender
+                    mRecorder!!.mAudioRecordThreshold = String(payload.asBytes()!!).toInt()
                 }
             }
-            mAudioPlayer = player
-            player.start()
         }
     }
 
