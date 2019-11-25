@@ -5,12 +5,51 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.SeekBar
+import android.content.Context
+import android.content.SharedPreferences
+import android.widget.Button
+import android.widget.Switch
 
 class Settings : AppCompatActivity() {
+
+    private lateinit var mContext: Context
+
+    private lateinit var mPrefs: SharedPreferences
+
+    private lateinit var cVibration: Switch
+
+    private lateinit var cWarnLevel: SeekBar
+
+    private lateinit var cSaveSettings: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
+
+        mContext = applicationContext
+
+        mPrefs = mContext.getSharedPreferences("dreamstreamPrefs", Context.MODE_PRIVATE)
+
+        /* Components */
+        cVibration = findViewById(R.id.swVibration)
+        cWarnLevel = findViewById(R.id.sbWarnLevel)
+        cSaveSettings = findViewById(R.id.btnSaveSettings)
+
+        /* Listener */
+        cSaveSettings.setOnClickListener{
+            val editor = mPrefs.edit()
+            editor.putBoolean("vibration", cVibration.isChecked)
+            editor.putInt("warnlevel", cWarnLevel.progress)
+            editor.apply()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        cVibration.isChecked = mPrefs.getBoolean("vibration", false)
+        cWarnLevel.progress = mPrefs.getInt("warnlevel", 0)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -28,7 +67,6 @@ class Settings : AppCompatActivity() {
                 // home icon got clicked -> open welcome activity
                 val homeIntent = Intent(this, Welcome::class.java)
                 homeIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                // TODO: reset running connection
                 startActivity(homeIntent)
             }
         }
