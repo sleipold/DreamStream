@@ -16,4 +16,5 @@
     <string name="vibration">Vibration</string>
     <string name="save_settings">Save Settings</string>
     <string name="sharedPref">dreamstreamSharedPrefs</string>
+    <string name="dreamstream_logo">DreamStream Logo</string>
 </resources>
