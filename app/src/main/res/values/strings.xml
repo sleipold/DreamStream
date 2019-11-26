@@ -15,4 +15,5 @@
     <string name="toast_disconnected">Disconnected from %s</string>
     <string name="vibration">Vibration</string>
     <string name="save_settings">Save Settings</string>
+    <string name="sharedPref">dreamstreamSharedPrefs</string>
 </resources>

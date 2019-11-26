@@ -15,7 +15,7 @@ class Settings : AppCompatActivity() {
 
     private lateinit var mContext: Context
 
-    private lateinit var mPrefs: SharedPreferences
+    private lateinit var mSharedPrefs: SharedPreferences
 
     private lateinit var cVibration: Switch
 
@@ -29,7 +29,7 @@ class Settings : AppCompatActivity() {
 
         mContext = applicationContext
 
-        mPrefs = mContext.getSharedPreferences("dreamstreamPrefs", Context.MODE_PRIVATE)
+        mSharedPrefs = mContext.getSharedPreferences(R.string.sharedPref.toString(), Context.MODE_PRIVATE)
 
         /* Components */
         cVibration = findViewById(R.id.swVibration)
@@ -38,7 +38,7 @@ class Settings : AppCompatActivity() {
 
         /* Listener */
         cSaveSettings.setOnClickListener{
-            val editor = mPrefs.edit()
+            val editor = mSharedPrefs.edit()
             editor.putBoolean("vibration", cVibration.isChecked)
             editor.putInt("warnlevel", cWarnLevel.progress)
             editor.apply()
@@ -48,8 +48,8 @@ class Settings : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
 
-        cVibration.isChecked = mPrefs.getBoolean("vibration", false)
-        cWarnLevel.progress = mPrefs.getInt("warnlevel", 0)
+        cVibration.isChecked = mSharedPrefs.getBoolean("vibration", false)
+        cWarnLevel.progress = mSharedPrefs.getInt("warnlevel", 0)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

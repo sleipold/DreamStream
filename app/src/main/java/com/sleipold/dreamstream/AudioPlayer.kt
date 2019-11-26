@@ -1,22 +1,32 @@
 package com.sleipold.dreamstream
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.os.Build
 import android.os.Process.THREAD_PRIORITY_AUDIO
 import android.os.Process.setThreadPriority
+import android.os.VibrationEffect
+import android.os.Vibrator
 import java.io.IOException
 import java.io.InputStream
+import kotlin.math.sqrt
 
 /**
  * A fire-once class. When created, you must pass a {@link InputStream}. Once {@link #start()} is
  * called, the input stream will be read from until either {@link #stop()} is called or the stream
  * ends.
  */
-open class AudioPlayer constructor(inputStream: InputStream) {
+open class AudioPlayer constructor(inputStream: InputStream, context: Context) {
 
     /** The audio stream we're reading from.  */
-    private var mInputStream: InputStream = inputStream
+    private val mInputStream: InputStream = inputStream
+
+    private val mContext: Context = context
+
+    private val mSharedPrefs: SharedPreferences = mContext.getSharedPreferences(R.string.sharedPref.toString(), Context.MODE_PRIVATE)
 
     /**
      * If true, the background thread will continue to loop and play audio. Once false, the thread
@@ -53,10 +63,27 @@ open class AudioPlayer constructor(inputStream: InputStream) {
 
             try {
                 var len: Int
+                var sum = 0.0
+                var volume: Int
                 do {
                     len = mInputStream.read(buffer.data)
                     if (isPlaying() && len > 0) {
+                        for (i in 0 until len) {
+                            sum += buffer.data[i] * buffer.data[i]
+                        }
+                        val amplitude = sum / len
+                        volume = sqrt(amplitude).toInt()
                         audioTrack.write(buffer.data, 0, len)
+                        // calc amplitude and check for vibrate setting
+                        val vibration = mSharedPrefs.getBoolean("vibration", false)
+                        if (vibration && volume >= mSharedPrefs.getInt("warnlevel", 100)) {
+                            val vibrator = mContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                            if (Build.VERSION.SDK_INT >= 26) {
+                                vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                            } else {
+                                vibrator.vibrate(100)
+                            }
+                        }
                     } else {
                         break
                     }

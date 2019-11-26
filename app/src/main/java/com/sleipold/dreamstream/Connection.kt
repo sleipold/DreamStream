@@ -2,6 +2,7 @@ package com.sleipold.dreamstream
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
@@ -18,8 +19,12 @@ import java.io.IOException
 class Connection : AConnection() {
 
     /* member */
+    lateinit var mContext: Context
+
     override lateinit var mName: String
+
     override val mServiceId: String = "com.sleipold.dreamstream"
+
     override val mStrategy: Strategy = Strategy.P2P_POINT_TO_POINT
 
     private var mState = State.UNKNOWN
@@ -40,6 +45,7 @@ class Connection : AConnection() {
         setContentView(R.layout.activity_connection)
 
         /* member */
+        mContext = applicationContext
         mName = intent.getStringExtra("role")!!
 
         /* components */
@@ -61,8 +67,8 @@ class Connection : AConnection() {
 
                 override fun onStopTrackingTouch(seekBar: SeekBar) {
                     // send audio record threshold from receiver to sender
-                    var threshold = seekBar.progress.toString()
-                    var payload = Payload.fromBytes(threshold.toByteArray())
+                    val threshold = seekBar.progress.toString()
+                    val payload = Payload.fromBytes(threshold.toByteArray())
                     send(payload)
                 }
             })
@@ -111,7 +117,7 @@ class Connection : AConnection() {
                     mAudioPlayer = null
                 }
 
-                val player = object : AudioPlayer(payload.asStream()!!.asInputStream()) {
+                val player = object : AudioPlayer(payload.asStream()!!.asInputStream(), mContext) {
                     @WorkerThread
                     override fun onFinish() {
                         runOnUiThread { mAudioPlayer = null }
