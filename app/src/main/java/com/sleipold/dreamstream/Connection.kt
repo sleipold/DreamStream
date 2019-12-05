@@ -1,43 +1,52 @@
 package com.sleipold.dreamstream
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Point
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
-import android.view.Menu
-import android.view.MenuItem
-import android.widget.SeekBar
-import android.widget.TextView
-import android.widget.Toast
+import android.view.*
+import android.widget.*
+import androidmads.library.qrgenearator.QRGContents
+import androidmads.library.qrgenearator.QRGEncoder
 import androidx.annotation.WorkerThread
+import androidx.core.app.ActivityCompat
 import androidx.core.view.isVisible
 import com.google.android.gms.nearby.connection.*
+import com.google.android.gms.vision.CameraSource
+import com.google.android.gms.vision.Detector
+import com.google.android.gms.vision.barcode.Barcode
+import com.google.android.gms.vision.barcode.BarcodeDetector
+import com.google.zxing.WriterException
+import kotlinx.android.synthetic.main.activity_connection.*
 import java.io.IOException
 
 class Connection : AConnection() {
 
     /* member */
     lateinit var mContext: Context
-
     override lateinit var mName: String
-
     override val mServiceId: String = "com.sleipold.dreamstream"
-
     override val mStrategy: Strategy = Strategy.P2P_POINT_TO_POINT
-
     private var mState = State.UNKNOWN
-
     private var mRecorder: AudioRecorder? = null
-
     private var mAudioPlayer: AudioPlayer? = null
-
     private var mOriginalVolume: Int = 0
+    private var mQrCodeDetector: BarcodeDetector? = null
+    private var mCameraSource: CameraSource? = null
+    private var mQrCodeValue = ""
 
     /* components */
     private lateinit var cCurrentState: TextView
     private lateinit var cRoleName: TextView
     private lateinit var cAudioRecordThreshold: SeekBar
+    private lateinit var cQrCode: ImageView
+    private lateinit var cCamera: SurfaceView
+    private lateinit var cQrCodeValue: TextView
+    private lateinit var cConnect: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,16 +60,40 @@ class Connection : AConnection() {
         cCurrentState = findViewById(R.id.txtCurrState)
         cRoleName = findViewById(R.id.txtRoleName)
         cAudioRecordThreshold = findViewById(R.id.sbAudioRecordThreshold)
+        cQrCode = findViewById(R.id.ivQrImage)
+        cCamera = findViewById(R.id.svScreen)
+        cQrCodeValue = findViewById(R.id.txtQrValue)
+        cConnect = findViewById(R.id.btnConnect)
 
         cRoleName.text = mName
+
         cAudioRecordThreshold.isVisible = false
+        cQrCode.isVisible = false
+
+        cConnect.setOnClickListener {
+            if (mQrCodeValue.isNotEmpty()) {
+                cCamera.isVisible = false
+                cQrCodeValue.isVisible = false
+                cConnect.isVisible = false
+                setState(State.SEARCHING)
+            }
+        }
 
         if (mName == "receiver") {
-            cAudioRecordThreshold.isVisible = true
+            // receiver device: only QR-Code is visible until device is connected to sender
+            cQrCode.isVisible = true
+            cCamera.isVisible = false
+            cQrCodeValue.isVisible = false
+            cConnect.isVisible = false
 
             cAudioRecordThreshold.setOnSeekBarChangeListener(object :
                 SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {}
+                override fun onProgressChanged(
+                    seekBar: SeekBar,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar) {}
 
@@ -85,7 +118,7 @@ class Connection : AConnection() {
             AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0
         )
 
-        setState(State.SEARCHING)
+        setState(State.AVAILABLE)
     }
 
     override fun onStop() {
@@ -135,6 +168,17 @@ class Connection : AConnection() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        mCameraSource!!.release()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        initialiseDetectorsAndSources()
+    }
+
+
     private fun setState(pState: State) {
         if (mState == pState) {
             println("State set to $pState but device was already in this state.")
@@ -155,16 +199,29 @@ class Connection : AConnection() {
         // update nearby connections to the new state
         when (newState) {
             State.SEARCHING -> {
+                cCurrentState.setText(R.string.state_searching)
                 disconnectFromAllEndpoints()
                 startDiscovering()
                 startAdvertising()
-                cCurrentState.setText(R.string.state_searching)
+            }
+            State.AVAILABLE -> {
+                cCurrentState.setText(R.string.state_available)
+                disconnectFromAllEndpoints()
+                if (mName == "receiver") {
+                    generateQrCode()
+                }
+                if (mName == "sender") {
+                    readQrCode()
+                }
             }
             State.CONNECTED -> {
+                cCurrentState.setText(R.string.state_connected)
                 stopDiscovering()
                 stopAdvertising()
-                cCurrentState.setText(R.string.state_connected)
-
+                if (mName == "receiver") {
+                    cAudioRecordThreshold.isVisible = true
+                    cQrCode.isVisible = false
+                }
                 if (mName == "sender") {
                     startRecording()
                 }
@@ -176,12 +233,122 @@ class Connection : AConnection() {
         }
     }
 
+    private fun readQrCode() {
+        initialiseDetectorsAndSources()
+    }
+
+    private fun generateQrCode() {
+        if (mServiceId.isNotEmpty()) {
+            val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+            val display = windowManager.defaultDisplay
+            val point = Point()
+            display.getSize(point)
+            val width = point.x / 2
+            val height = point.y / 2
+            var smallerDimension = if (width < height) width else height
+            smallerDimension = smallerDimension * 3 / 4
+
+            var qrgEncoder = QRGEncoder(
+                mServiceId, null,
+                QRGContents.Type.TEXT,
+                smallerDimension
+            )
+            try {
+                var bitmap = qrgEncoder.encodeAsBitmap()
+                cQrCode.setImageBitmap(bitmap)
+                setState(State.SEARCHING)
+            } catch (e: WriterException) {
+                println(e.toString())
+            }
+        } else {
+            println("mServiceId must not be empty")
+        }
+    }
+
+    private fun initialiseDetectorsAndSources() {
+
+        Toast.makeText(
+            applicationContext,
+            getString(R.string.qr_scanner_started),
+            Toast.LENGTH_SHORT
+        ).show()
+
+        mQrCodeDetector = BarcodeDetector.Builder(this)
+            .setBarcodeFormats(Barcode.QR_CODE)
+            .build()
+
+        mCameraSource = CameraSource.Builder(this, mQrCodeDetector!!)
+            .setRequestedPreviewSize(1920, 1080)
+            .setAutoFocusEnabled(true)
+            .build()
+
+        cCamera.holder.addCallback(object : SurfaceHolder.Callback {
+            override fun surfaceCreated(holder: SurfaceHolder) {
+                try {
+                    if (ActivityCompat.checkSelfPermission(
+                            this@Connection,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        mCameraSource!!.start(cCamera.holder)
+                    } else {
+                        ActivityCompat.requestPermissions(
+                            this@Connection,
+                            arrayOf(Manifest.permission.CAMERA),
+                            REQUEST_CAMERA_PERMISSION
+                        )
+                    }
+
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            }
+
+            override fun surfaceChanged(
+                holder: SurfaceHolder,
+                format: Int,
+                width: Int,
+                height: Int
+            ) {
+            }
+
+
+            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                mCameraSource!!.stop()
+            }
+        })
+
+        mQrCodeDetector!!.setProcessor(object : Detector.Processor<Barcode> {
+            override fun release() {
+                Toast.makeText(
+                    applicationContext,
+                    getString(R.string.qr_code_prevent_memory_leak),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            override fun receiveDetections(detections: Detector.Detections<Barcode>) {
+                val qrCodes = detections.detectedItems
+                if (qrCodes.size() != 0) {
+                    txtQrValue.post {
+                        btnConnect.text = getString(R.string.connect_to_receiver)
+                        mQrCodeValue = qrCodes.valueAt(0).displayValue
+                        txtQrValue.text = mQrCodeValue
+                    }
+                }
+            }
+        })
+    }
+
     override fun onEndpointDiscovered(endpoint: Endpoint) {
         stopDiscovering()
         connectToEndpoint(endpoint)
     }
 
-    override fun onConnectionInitiated(endpoint: Endpoint, connectionInfo: ConnectionInfo) {
+    override fun onConnectionInitiated(
+        endpoint: Endpoint,
+        connectionInfo: ConnectionInfo
+    ) {
         acceptConnection(endpoint)
     }
 
@@ -195,7 +362,9 @@ class Connection : AConnection() {
 
     override fun onEndpointDisconnected(endpoint: Endpoint) {
         Toast.makeText(
-            this, getString(R.string.toast_disconnected, endpoint.name), Toast.LENGTH_SHORT
+            this,
+            getString(R.string.toast_disconnected, endpoint.name),
+            Toast.LENGTH_SHORT
         )
             .show()
         setState(State.SEARCHING)

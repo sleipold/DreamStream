@@ -20,6 +20,8 @@ abstract class AConnection : AppCompatActivity() {
 
     private val REQUEST_CODE_REQUIRED_PERMISSIONS = 1
 
+    val REQUEST_CAMERA_PERMISSION = 201
+
     private val REQUIRED_PERMISSIONS = arrayOf(
         Manifest.permission.BLUETOOTH,
         Manifest.permission.BLUETOOTH_ADMIN,
@@ -402,6 +404,7 @@ abstract class AConnection : AppCompatActivity() {
 
     enum class State {
         UNKNOWN,
+        AVAILABLE,
         SEARCHING,
         CONNECTED
     }
