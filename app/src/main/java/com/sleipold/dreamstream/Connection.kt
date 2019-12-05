@@ -2,7 +2,6 @@ package com.sleipold.dreamstream
 
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.ParcelFileDescriptor

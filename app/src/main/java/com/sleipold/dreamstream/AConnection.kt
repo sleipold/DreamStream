@@ -205,7 +205,7 @@ abstract class AConnection : AppCompatActivity() {
             if (ContextCompat.checkSelfPermission(
                     context,
                     permission
-                ) !== PackageManager.PERMISSION_GRANTED
+                ) != PackageManager.PERMISSION_GRANTED
             ) {
                 return false
             }
@@ -383,9 +383,9 @@ abstract class AConnection : AppCompatActivity() {
 
     class Endpoint(val id: String, val name: String) {
 
-        override fun equals(other: Any?): Boolean {
-            if (other is Endpoint) {
-                val other = other as Endpoint?
+        override fun equals(obj: Any?): Boolean {
+            if (obj is Endpoint) {
+                val other = obj as Endpoint?
                 return id == other!!.id
             }
             return false
