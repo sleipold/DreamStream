@@ -228,7 +228,7 @@ abstract class AConnection : AppCompatActivity() {
             mConnectionLifecycleCallback,
             advertisingOptions.build()
         )?.addOnSuccessListener {
-            println("Now advertising endpoint $localEndpointName")
+            println("Now advertising endpoint $localEndpointName on service id $mServiceId")
             onAdvertisingStarted()
         }?.addOnFailureListener { e ->
             mIsAdvertising = false

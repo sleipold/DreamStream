@@ -23,13 +23,18 @@ import com.google.android.gms.vision.barcode.BarcodeDetector
 import com.google.zxing.WriterException
 import kotlinx.android.synthetic.main.activity_connection.*
 import java.io.IOException
+import android.content.DialogInterface
+import android.text.InputType
+import android.widget.EditText
+import android.app.AlertDialog
+
 
 class Connection : AConnection() {
 
     /* member */
     lateinit var mContext: Context
     override lateinit var mName: String
-    override val mServiceId: String = "com.sleipold.dreamstream"
+    override var mServiceId: String = "com.sleipold.dreamstream"
     override val mStrategy: Strategy = Strategy.P2P_POINT_TO_POINT
     private var mState = State.UNKNOWN
     private var mRecorder: AudioRecorder? = null
@@ -175,7 +180,7 @@ class Connection : AConnection() {
 
     override fun onResume() {
         super.onResume()
-        initialiseDetectorsAndSources()
+        readQrCode()
     }
 
 
@@ -208,7 +213,7 @@ class Connection : AConnection() {
                 cCurrentState.setText(R.string.state_available)
                 disconnectFromAllEndpoints()
                 if (mName == "receiver") {
-                    generateQrCode()
+                    setServiceIdFromUserInput()
                 }
                 if (mName == "sender") {
                     readQrCode()
@@ -216,6 +221,7 @@ class Connection : AConnection() {
             }
             State.CONNECTED -> {
                 cCurrentState.setText(R.string.state_connected)
+                mQrCodeDetector!!.release()
                 stopDiscovering()
                 stopAdvertising()
                 if (mName == "receiver") {
@@ -234,39 +240,6 @@ class Connection : AConnection() {
     }
 
     private fun readQrCode() {
-        initialiseDetectorsAndSources()
-    }
-
-    private fun generateQrCode() {
-        if (mServiceId.isNotEmpty()) {
-            val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-            val display = windowManager.defaultDisplay
-            val point = Point()
-            display.getSize(point)
-            val width = point.x / 2
-            val height = point.y / 2
-            var smallerDimension = if (width < height) width else height
-            smallerDimension = smallerDimension * 3 / 4
-
-            var qrgEncoder = QRGEncoder(
-                mServiceId, null,
-                QRGContents.Type.TEXT,
-                smallerDimension
-            )
-            try {
-                var bitmap = qrgEncoder.encodeAsBitmap()
-                cQrCode.setImageBitmap(bitmap)
-                setState(State.SEARCHING)
-            } catch (e: WriterException) {
-                println(e.toString())
-            }
-        } else {
-            println("mServiceId must not be empty")
-        }
-    }
-
-    private fun initialiseDetectorsAndSources() {
-
         Toast.makeText(
             applicationContext,
             getString(R.string.qr_scanner_started),
@@ -334,10 +307,60 @@ class Connection : AConnection() {
                         btnConnect.text = getString(R.string.connect_to_receiver)
                         mQrCodeValue = qrCodes.valueAt(0).displayValue
                         txtQrValue.text = mQrCodeValue
+                        mServiceId = mQrCodeValue
                     }
                 }
             }
         })
+    }
+
+    private fun generateQrCode() {
+        if (mServiceId.isNotEmpty()) {
+            val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+            val display = windowManager.defaultDisplay
+            val point = Point()
+            display.getSize(point)
+            val width = point.x / 2
+            val height = point.y / 2
+            var smallerDimension = if (width < height) width else height
+            smallerDimension = smallerDimension * 3 / 4
+
+            var qrgEncoder = QRGEncoder(
+                mServiceId, null,
+                QRGContents.Type.TEXT,
+                smallerDimension
+            )
+            try {
+                var bitmap = qrgEncoder.encodeAsBitmap()
+                cQrCode.setImageBitmap(bitmap)
+                setState(State.SEARCHING)
+            } catch (e: WriterException) {
+                println(e.toString())
+            }
+        } else {
+            println("mServiceId must not be empty")
+        }
+    }
+
+    private fun setServiceIdFromUserInput() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Enter the name of the connection")
+
+        // Set up the input
+        val input = EditText(this)
+        input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_NORMAL
+        builder.setView(input)
+
+        // Set up the buttons
+        builder.setPositiveButton("OK") { _, _ ->
+            run {
+                mServiceId = input.text.toString()
+                generateQrCode()
+            }
+        }
+        builder.setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
+
+        builder.show()
     }
 
     override fun onEndpointDiscovered(endpoint: Endpoint) {
