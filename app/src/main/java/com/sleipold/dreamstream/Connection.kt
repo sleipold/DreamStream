@@ -23,7 +23,6 @@ import com.google.android.gms.vision.barcode.BarcodeDetector
 import com.google.zxing.WriterException
 import kotlinx.android.synthetic.main.activity_connection.*
 import java.io.IOException
-import android.content.DialogInterface
 import android.text.InputType
 import android.widget.EditText
 import android.app.AlertDialog
@@ -45,10 +44,14 @@ class Connection : AConnection() {
     private var mQrCodeValue = ""
 
     /* components */
+    // both
     private lateinit var cCurrentState: TextView
     private lateinit var cRoleName: TextView
+    // receiver
     private lateinit var cAudioRecordThreshold: SeekBar
     private lateinit var cQrCode: ImageView
+    private lateinit var cQrCodeInfo: TextView
+    // sender
     private lateinit var cCamera: SurfaceView
     private lateinit var cQrCodeValue: TextView
     private lateinit var cConnect: Button
@@ -62,53 +65,51 @@ class Connection : AConnection() {
         mName = intent.getStringExtra("role")!!
 
         /* components */
+        // both
         cCurrentState = findViewById(R.id.txtCurrState)
         cRoleName = findViewById(R.id.txtRoleName)
+        // receiver
         cAudioRecordThreshold = findViewById(R.id.sbAudioRecordThreshold)
         cQrCode = findViewById(R.id.ivQrImage)
+        cQrCodeInfo = findViewById(R.id.txtScannerInfo)
+        // sender
         cCamera = findViewById(R.id.svScreen)
         cQrCodeValue = findViewById(R.id.txtQrValue)
         cConnect = findViewById(R.id.btnConnect)
 
         cRoleName.text = mName
 
-        cAudioRecordThreshold.isVisible = false
-        cQrCode.isVisible = false
+        when (mName) {
+            "receiver" -> {
+                cAudioRecordThreshold.setOnSeekBarChangeListener(object :
+                    SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(
+                        seekBar: SeekBar,
+                        progress: Int,
+                        fromUser: Boolean
+                    ) {
+                    }
 
-        cConnect.setOnClickListener {
-            if (mQrCodeValue.isNotEmpty()) {
-                cCamera.isVisible = false
-                cQrCodeValue.isVisible = false
-                cConnect.isVisible = false
-                setState(State.SEARCHING)
+                    override fun onStartTrackingTouch(seekBar: SeekBar) {}
+
+                    override fun onStopTrackingTouch(seekBar: SeekBar) {
+                        // send audio record threshold from receiver to sender
+                        val threshold = seekBar.progress.toString()
+                        val payload = Payload.fromBytes(threshold.toByteArray())
+                        send(payload)
+                    }
+                })
             }
-        }
-
-        if (mName == "receiver") {
-            // receiver device: only QR-Code is visible until device is connected to sender
-            cQrCode.isVisible = true
-            cCamera.isVisible = false
-            cQrCodeValue.isVisible = false
-            cConnect.isVisible = false
-
-            cAudioRecordThreshold.setOnSeekBarChangeListener(object :
-                SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
+            "sender" -> {
+                cConnect.setOnClickListener {
+                    if (mQrCodeValue.isNotEmpty()) {
+                        cCamera.isVisible = false
+                        cQrCodeValue.isVisible = false
+                        cConnect.isVisible = false
+                        setState(State.SEARCHING)
+                    }
                 }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar) {}
-
-                override fun onStopTrackingTouch(seekBar: SeekBar) {
-                    // send audio record threshold from receiver to sender
-                    val threshold = seekBar.progress.toString()
-                    val payload = Payload.fromBytes(threshold.toByteArray())
-                    send(payload)
-                }
-            })
+            }
         }
     }
 
@@ -175,12 +176,16 @@ class Connection : AConnection() {
 
     override fun onPause() {
         super.onPause()
-        mCameraSource!!.release()
+        if (mName == "sender") {
+            mCameraSource!!.release()
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        readQrCode()
+        if (mName == "sender") {
+            readQrCode()
+        }
     }
 
 
@@ -203,33 +208,50 @@ class Connection : AConnection() {
     private fun onStateChanged(newState: State) {
         // update nearby connections to the new state
         when (newState) {
+            State.AVAILABLE -> {
+                cCurrentState.setText(R.string.state_available)
+                disconnectFromAllEndpoints()
+
+                // sender components
+                cCamera.isVisible = false
+                cQrCodeValue.isVisible = false
+                cConnect.isVisible = false
+
+                // recorder components
+                cAudioRecordThreshold.isVisible = false
+                cQrCode.isVisible = false
+                cQrCodeInfo.isVisible = false
+
+                when (mName) {
+                    "receiver" -> {
+                        setServiceIdFromUserInput()
+                    }
+                    "sender" -> {
+                        cQrCodeValue.setText(R.string.no_qr_code_detected)
+                        readQrCode()
+                    }
+                }
+            }
             State.SEARCHING -> {
                 cCurrentState.setText(R.string.state_searching)
                 disconnectFromAllEndpoints()
                 startDiscovering()
                 startAdvertising()
             }
-            State.AVAILABLE -> {
-                cCurrentState.setText(R.string.state_available)
-                disconnectFromAllEndpoints()
-                if (mName == "receiver") {
-                    setServiceIdFromUserInput()
-                }
-                if (mName == "sender") {
-                    readQrCode()
-                }
-            }
             State.CONNECTED -> {
                 cCurrentState.setText(R.string.state_connected)
-                mQrCodeDetector!!.release()
                 stopDiscovering()
                 stopAdvertising()
-                if (mName == "receiver") {
-                    cAudioRecordThreshold.isVisible = true
-                    cQrCode.isVisible = false
-                }
-                if (mName == "sender") {
-                    startRecording()
+                when (mName) {
+                    "receiver" -> {
+                        cAudioRecordThreshold.progress = 50
+                        cAudioRecordThreshold.isVisible = true
+                        cQrCode.isVisible = false
+                        cQrCodeInfo.isVisible = false
+                    }
+                    "sender" -> {
+                        startRecording()
+                    }
                 }
             }
             State.UNKNOWN -> {
@@ -240,6 +262,9 @@ class Connection : AConnection() {
     }
 
     private fun readQrCode() {
+        cCamera.isVisible = true
+        cQrCodeValue.isVisible = true
+
         Toast.makeText(
             applicationContext,
             getString(R.string.qr_scanner_started),
@@ -304,6 +329,7 @@ class Connection : AConnection() {
                 val qrCodes = detections.detectedItems
                 if (qrCodes.size() != 0) {
                     txtQrValue.post {
+                        btnConnect.isVisible = true
                         btnConnect.text = getString(R.string.connect_to_receiver)
                         mQrCodeValue = qrCodes.valueAt(0).displayValue
                         txtQrValue.text = mQrCodeValue
@@ -333,6 +359,8 @@ class Connection : AConnection() {
             try {
                 var bitmap = qrgEncoder.encodeAsBitmap()
                 cQrCode.setImageBitmap(bitmap)
+                cQrCode.isVisible = true
+                cQrCodeInfo.isVisible = true
                 setState(State.SEARCHING)
             } catch (e: WriterException) {
                 println(e.toString())
@@ -344,7 +372,7 @@ class Connection : AConnection() {
 
     private fun setServiceIdFromUserInput() {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Enter the name of the connection")
+        builder.setTitle("Please enter connection name:")
 
         // Set up the input
         val input = EditText(this)
@@ -390,7 +418,7 @@ class Connection : AConnection() {
             Toast.LENGTH_SHORT
         )
             .show()
-        setState(State.SEARCHING)
+        setState(State.AVAILABLE)
     }
 
     override fun onConnectionFailed(endpoint: Endpoint?) {

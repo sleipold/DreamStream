@@ -84,4 +84,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/txtCurrState" />
 
+    <TextView
+        android:id="@+id/txtScannerInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/scan_qr_code_with_sender_device"
+        app:layout_constraintBottom_toTopOf="@+id/ivQrImage"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtRoleName" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

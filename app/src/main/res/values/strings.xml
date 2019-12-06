@@ -19,8 +19,9 @@
     <string name="sharedPref">dreamstreamSharedPrefs</string>
     <string name="dreamstream_logo">DreamStream Logo</string>
     <string name="connect_to_receiver">Connect to receiver</string>
-    <string name="qr_code_prevent_memory_leak">To prevent memory leaks QR code scanner has been stopped</string>
-    <string name="qr_scanner_started">QR code scanner started</string>
-    <string name="qr_code_placeholder">QR Code placeholder</string>
-    <string name="no_qr_code_detected">No QR code detected</string>
+    <string name="qr_code_prevent_memory_leak">QR-Code scanner has been stopped</string>
+    <string name="qr_scanner_started">QR-Code scanner started</string>
+    <string name="qr_code_placeholder">QR-Code placeholder</string>
+    <string name="no_qr_code_detected">No QR-Code detected</string>
+    <string name="scan_qr_code_with_sender_device">Scan QR-Code with sending device</string>
 </resources>
