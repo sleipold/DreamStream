@@ -46,7 +46,7 @@ open class AudioPlayer constructor(inputStream: InputStream, context: Context) {
     /** Starts playing the stream.  */
     fun start() {
         mAlive = true
-        val mThread = Thread {
+        mThread = Thread {
             println("${Thread.currentThread()} AudioPlayer has run.")
             setThreadPriority(THREAD_PRIORITY_AUDIO)
 
@@ -96,7 +96,7 @@ open class AudioPlayer constructor(inputStream: InputStream, context: Context) {
                 onFinish()
             }
         }
-        mThread.start()
+        mThread!!.start()
     }
 
     private fun stopInternal() {

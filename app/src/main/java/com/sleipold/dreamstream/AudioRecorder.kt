@@ -37,7 +37,7 @@ class AudioRecorder constructor(file: ParcelFileDescriptor) {
         }
 
         mAlive = true
-        val mThread = Thread {
+        mThread = Thread {
             println("${Thread.currentThread()} AudioRecorder has run.")
             setThreadPriority(THREAD_PRIORITY_AUDIO)
 
@@ -91,7 +91,7 @@ class AudioRecorder constructor(file: ParcelFileDescriptor) {
                 record.release()
             }
         }
-        mThread.start()
+        mThread!!.start()
     }
 
     private fun stopInternal() {
