@@ -1,6 +1,7 @@
 package com.sleipold.dreamstream
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,6 +9,7 @@ import android.graphics.Point
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
+import android.text.InputType
 import android.view.*
 import android.widget.*
 import androidmads.library.qrgenearator.QRGContents
@@ -15,7 +17,9 @@ import androidmads.library.qrgenearator.QRGEncoder
 import androidx.annotation.WorkerThread
 import androidx.core.app.ActivityCompat
 import androidx.core.view.isVisible
-import com.google.android.gms.nearby.connection.*
+import com.google.android.gms.nearby.connection.ConnectionInfo
+import com.google.android.gms.nearby.connection.Payload
+import com.google.android.gms.nearby.connection.Strategy
 import com.google.android.gms.vision.CameraSource
 import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
@@ -23,22 +27,22 @@ import com.google.android.gms.vision.barcode.BarcodeDetector
 import com.google.zxing.WriterException
 import kotlinx.android.synthetic.main.activity_connection.*
 import java.io.IOException
-import android.text.InputType
-import android.widget.EditText
-import android.app.AlertDialog
-
 
 class Connection : AConnection() {
-
     /* member */
     lateinit var mContext: Context
+
     override lateinit var mName: String
     override var mServiceId: String = "com.sleipold.dreamstream"
     override val mStrategy: Strategy = Strategy.P2P_POINT_TO_POINT
+
     private var mState = State.UNKNOWN
+
     private var mRecorder: AudioRecorder? = null
+
     private var mAudioPlayer: AudioPlayer? = null
     private var mOriginalVolume: Int = 0
+
     private var mQrCodeDetector: BarcodeDetector? = null
     private var mCameraSource: CameraSource? = null
     private var mQrCodeValue = ""
@@ -103,9 +107,6 @@ class Connection : AConnection() {
             "sender" -> {
                 cConnect.setOnClickListener {
                     if (mQrCodeValue.isNotEmpty()) {
-                        cCamera.isVisible = false
-                        cQrCodeValue.isVisible = false
-                        cConnect.isVisible = false
                         setState(State.SEARCHING)
                     }
                 }
@@ -141,7 +142,7 @@ class Connection : AConnection() {
             stopPlaying()
         }
 
-        // After our Activity stops, we disconnect from Nearby Connections.
+        // After our Activity stops, we disconnect from Nearby Connections
         setState(State.UNKNOWN)
 
         super.onStop()
@@ -188,7 +189,6 @@ class Connection : AConnection() {
         }
     }
 
-
     private fun setState(pState: State) {
         if (mState == pState) {
             println("State set to $pState but device was already in this state.")
@@ -200,39 +200,45 @@ class Connection : AConnection() {
         onStateChanged(pState)
     }
 
-    /**
-     * State has changed.
-     *
-     * @param newState The new state. Prepare device for this state.
-     */
     private fun onStateChanged(newState: State) {
         // update nearby connections to the new state
+        // and handles visibility of components
+
+        // sender components
+        cCamera.isVisible = false
+        cQrCodeValue.isVisible = false
+        cConnect.isVisible = false
+
+        // recorder components
+        cAudioRecordThreshold.isVisible = false
+        cQrCode.isVisible = false
+        cQrCodeInfo.isVisible = false
+
         when (newState) {
             State.AVAILABLE -> {
                 cCurrentState.setText(R.string.state_available)
                 disconnectFromAllEndpoints()
 
-                // sender components
-                cCamera.isVisible = false
-                cQrCodeValue.isVisible = false
-                cConnect.isVisible = false
-
-                // recorder components
-                cAudioRecordThreshold.isVisible = false
-                cQrCode.isVisible = false
-                cQrCodeInfo.isVisible = false
-
                 when (mName) {
                     "receiver" -> {
                         setServiceIdFromUserInput()
+                        cQrCode.isVisible = true
+                        cQrCodeInfo.isVisible = true
                     }
                     "sender" -> {
+                        cCamera.isVisible = true
+                        cQrCodeValue.isVisible = true
                         cQrCodeValue.setText(R.string.no_qr_code_detected)
                         readQrCode()
                     }
                 }
             }
             State.SEARCHING -> {
+                when (mName) {
+                    "receiver" -> {
+                        cQrCode.isVisible = true
+                    }
+                }
                 cCurrentState.setText(R.string.state_searching)
                 disconnectFromAllEndpoints()
                 startDiscovering()
@@ -262,9 +268,6 @@ class Connection : AConnection() {
     }
 
     private fun readQrCode() {
-        cCamera.isVisible = true
-        cQrCodeValue.isVisible = true
-
         Toast.makeText(
             applicationContext,
             getString(R.string.qr_scanner_started),
@@ -329,8 +332,8 @@ class Connection : AConnection() {
                 val qrCodes = detections.detectedItems
                 if (qrCodes.size() != 0) {
                     txtQrValue.post {
-                        btnConnect.isVisible = true
-                        btnConnect.text = getString(R.string.connect_to_receiver)
+                        cConnect.isVisible = true
+                        cConnect.text = getString(R.string.connect_to_receiver)
                         mQrCodeValue = qrCodes.valueAt(0).displayValue
                         txtQrValue.text = mQrCodeValue
                         mServiceId = mQrCodeValue
@@ -359,14 +362,14 @@ class Connection : AConnection() {
             try {
                 var bitmap = qrgEncoder.encodeAsBitmap()
                 cQrCode.setImageBitmap(bitmap)
-                cQrCode.isVisible = true
-                cQrCodeInfo.isVisible = true
                 setState(State.SEARCHING)
             } catch (e: WriterException) {
                 println(e.toString())
             }
         } else {
             println("mServiceId must not be empty")
+            cQrCode.isVisible = false
+            cQrCodeInfo.text = getString(R.string.service_id_must_not_be_empty)
         }
     }
 
