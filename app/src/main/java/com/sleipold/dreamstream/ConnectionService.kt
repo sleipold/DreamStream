@@ -1,15 +1,27 @@
 package com.sleipold.dreamstream
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import androidx.annotation.WorkerThread
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
+import com.sleipold.dreamstream.IConnection.Endpoint
+import com.sleipold.dreamstream.IConnection.State
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.Disposable
 import java.io.IOException
 import java.util.*
+
+data class ThresholdChanged(val pThreshold: Int)
 
 class ConnectionService : Service(), IConnection {
 
@@ -17,6 +29,8 @@ class ConnectionService : Service(), IConnection {
 
     private var mIntent: Intent? = null
     private lateinit var mContext: Context
+    private val mChannelId = "ForegroundServiceChannel"
+    private var mDisposable: Disposable? = null
 
     // Interface properties
 
@@ -27,11 +41,11 @@ class ConnectionService : Service(), IConnection {
     override var mIsConnecting: Boolean = false
     override var mIsDiscovering: Boolean = false
     override var mIsAdvertising: Boolean = false
-        
+
     override var mConnectionsClient: ConnectionsClient? = null
-    override val mDiscoveredEndpoints: HashMap<String, IConnection.Endpoint> = HashMap()
-    override val mPendingConnections: HashMap<String, IConnection.Endpoint> = HashMap()
-    override val mEstablishedConnections: HashMap<String, IConnection.Endpoint> = HashMap()
+    override val mDiscoveredEndpoints: HashMap<String, Endpoint> = HashMap()
+    override val mPendingConnections: HashMap<String, Endpoint> = HashMap()
+    override val mEstablishedConnections: HashMap<String, Endpoint> = HashMap()
 
     override val mConnectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpointId: String, connectionInfo: ConnectionInfo) {
@@ -41,7 +55,7 @@ class ConnectionService : Service(), IConnection {
                     endpointId, connectionInfo.endpointName
                 )
             )
-            val endpoint = IConnection.Endpoint(endpointId, connectionInfo.endpointName)
+            val endpoint = Endpoint(endpointId, connectionInfo.endpointName)
             mPendingConnections[endpointId] = endpoint
             this@ConnectionService.onConnectionInitiated(endpoint, connectionInfo)
         }
@@ -83,7 +97,7 @@ class ConnectionService : Service(), IConnection {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             println(
                 String.format(
-                    "onPayloadReceived(endpointId=%s, payload=%s)",
+                    "onPayloadReceived(endpointId=%s, payload=%s): on $mName",
                     endpointId,
                     payload
                 )
@@ -95,7 +109,9 @@ class ConnectionService : Service(), IConnection {
             if (update.status == PayloadTransferUpdate.Status.SUCCESS) {
                 println(
                     String.format(
-                        "onPayloadTransferUpdate(endpointId=%s, update=%s) successful", endpointId, update
+                        "onPayloadTransferUpdate(endpointId=%s, update=%s) successful: on $mName",
+                        endpointId,
+                        update
                     )
                 )
             }
@@ -106,23 +122,65 @@ class ConnectionService : Service(), IConnection {
 
     private var mRecorder: AudioRecorder? = null
     private var mAudioPlayer: AudioPlayer? = null
+    private var mOriginalVolume: Int = 0
+    private var mVolumeControlStream: Int = AudioManager.STREAM_MUSIC
 
     // properties
 
-    private var mState = IConnection.State.UNKNOWN
+    private var mState = State.UNKNOWN
 
     // Service functions
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        println("ConnectionService started")
-
         mIntent = intent
         mName = mIntent!!.getStringExtra("role")!!
         mServiceId = mIntent!!.getStringExtra("serviceId")!!
         mContext = applicationContext
         mConnectionsClient = Nearby.getConnectionsClient(mContext)
 
-        setState(IConnection.State.SEARCHING)
+        println("ConnectionService started: on $mName")
+
+        // set the media volume to max and store original volume
+        mVolumeControlStream = AudioManager.STREAM_MUSIC
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        mOriginalVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        audioManager.setStreamVolume(
+            AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0
+        )
+
+        mDisposable =
+            EventBus.subscribe<ThresholdChanged>()
+                // receive event on main thread
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe {
+                    println("$mName: event received: $it")
+                    send(Payload.fromBytes(it.pThreshold.toString().toByteArray()))
+                }
+
+        val contentTitle = "ConnectionService"
+        val contentText = if (mName == "receiver") {
+            "Playing audio"
+        } else {
+            "Recording audio"
+        }
+
+        createNotificationChannel()
+        val notificationIntent = Intent(this, Connection::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0, notificationIntent, 0
+        )
+
+        val notification = NotificationCompat.Builder(this, mChannelId)
+            .setContentTitle(contentTitle)
+            .setContentText(contentText)
+            .setSmallIcon(R.drawable.ic_launcher_dreamstream_logo)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        startForeground(1, notification)
+
+        setState(State.SEARCHING)
 
         // if service gets killed, after returning from here, restart
         return START_STICKY
@@ -134,13 +192,44 @@ class ConnectionService : Service(), IConnection {
     }
 
     override fun onDestroy() {
-        println("ConnectionService destroyed")
+        // restore the original volume
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, mOriginalVolume, 0)
+        mVolumeControlStream = AudioManager.USE_DEFAULT_STREAM_TYPE
+
+        if (isRecording()) {
+            stopRecording()
+        }
+
+        if (isPlaying()) {
+            stopPlaying()
+        }
+
+        mDisposable?.dispose()
+
+        disconnectFromAllEndpoints()
+        stopAllEndpoints()
+
+        println("ConnectionService destroyed: on $mName")
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val serviceChannel = NotificationChannel(
+                mChannelId,
+                "Foreground Service Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+
+            val manager = getSystemService(NotificationManager::class.java)
+            manager!!.createNotificationChannel(serviceChannel)
+        }
     }
 
     // Interface functions
 
-    override fun onReceive(endpoint: IConnection.Endpoint?, payload: Payload) {
-        println("ConnectionService onReceive")
+    override fun onReceive(endpoint: Endpoint?, payload: Payload) {
+        println("ConnectionService onReceive: on $mName")
         when (payload.type) {
             Payload.Type.STREAM -> {
                 if (mAudioPlayer != null) {
@@ -160,7 +249,7 @@ class ConnectionService : Service(), IConnection {
 
             Payload.Type.BYTES -> {
                 if (mRecorder != null) {
-                    // sending threshold from receiver to sender
+                    // set audio threshold according to receivers seekbar
                     mRecorder!!.mAudioRecordThreshold = String(payload.asBytes()!!).toInt()
                 }
             }
@@ -171,78 +260,82 @@ class ConnectionService : Service(), IConnection {
         requestCode: Int,
         permissions: Array<String>,
         grantResults: IntArray
-    ) {}
+    ) {
+    }
 
     override fun onAdvertisingStarted() {
-        println("ServiceConnection onAdvertisingStarted")
+        println("ConnectionService onAdvertisingStarted: on $mName")
     }
 
     override fun onAdvertisingFailed() {
-        println("ServiceConnection onAdvertisingFailed")
+        println("ServiceConnection onAdvertisingFailed: on $mName")
     }
 
     override fun onDiscoveryStarted() {
-        println("ServiceConnection onDiscoveryStarted")
+        println("ServiceConnection onDiscoveryStarted: on $mName")
     }
 
     override fun onDiscoveryFailed() {
-        println("ServiceConnection onDiscoveryFailed")
+        println("ServiceConnection onDiscoveryFailed: on $mName")
     }
 
-    override fun onEndpointDiscovered(endpoint: IConnection.Endpoint) {
+    override fun onEndpointDiscovered(endpoint: Endpoint) {
         stopDiscovering()
         connectToEndpoint(endpoint)
     }
 
     override fun onConnectionInitiated(
-        endpoint: IConnection.Endpoint,
+        endpoint: Endpoint,
         connectionInfo: ConnectionInfo
     ) {
         acceptConnection(endpoint)
     }
 
-    override fun onEndpointConnected(endpoint: IConnection.Endpoint) {
-        println("ConnectionService onEndpointConnected")
-        setState(IConnection.State.CONNECTED)
+    override fun onEndpointConnected(endpoint: Endpoint) {
+        println("ConnectionService onEndpointConnected: connected to endpoint $endpoint")
+        setState(State.CONNECTED)
     }
 
-    override fun onEndpointDisconnected(endpoint: IConnection.Endpoint) {
-        println("ConnectionService onEndpointDisconnected")
-        setState(IConnection.State.AVAILABLE)
+    override fun onEndpointDisconnected(endpoint: Endpoint) {
+        println("ConnectionService onEndpointDisconnected: disconnected from endpoint $endpoint")
+        setState(State.AVAILABLE)
     }
 
-    override fun onConnectionFailed(endpoint: IConnection.Endpoint?) {
-        if (mState == IConnection.State.SEARCHING) {
+    override fun onConnectionFailed(endpoint: Endpoint?) {
+        if (mState == State.SEARCHING) {
             startDiscovering()
         }
     }
 
     // functions
 
-    private fun setState(pState: IConnection.State) {
+    private fun setState(pState: State) {
         if (mState == pState) {
-            println("ConnectionService: State set to $pState but device was already in this state.")
+            println("ConnectionService: State of $mName set to $pState but device was already in this pState.")
             return
         }
 
         mState = pState
-        println("ConnectionService: State set to $pState")
+        println("ConnectionService: State of $mName set to $pState")
         onStateChanged(pState)
     }
 
-    private fun onStateChanged(newState: IConnection.State) {
-        // update nearby connections to the new state
+    private fun onStateChanged(newState: State) {
+        // update nearby connections to the new pState
 
         when (newState) {
-            IConnection.State.AVAILABLE -> {
+            State.AVAILABLE -> {
                 disconnectFromAllEndpoints()
+                onNewMessage(State.AVAILABLE)
             }
-            IConnection.State.SEARCHING -> {
+            State.SEARCHING -> {
                 disconnectFromAllEndpoints()
+                onNewMessage(State.SEARCHING)
                 startDiscovering()
                 startAdvertising()
             }
-            IConnection.State.CONNECTED -> {
+            State.CONNECTED -> {
+                onNewMessage(State.CONNECTED)
                 stopDiscovering()
                 stopAdvertising()
                 when (mName) {
@@ -251,15 +344,19 @@ class ConnectionService : Service(), IConnection {
                     }
                 }
             }
-            IConnection.State.UNKNOWN -> {
-                stopAllEndpoints()
+            State.UNKNOWN -> {
+                onNewMessage(State.UNKNOWN)
             }
         }
     }
 
+    private fun onNewMessage(pState: State) {
+        EventBus.post(StateChanged(pState))
+    }
+
     /** Starts recording sound from the microphone and streaming it to all connected devices. */
     private fun startRecording() {
-        println("ConnectionService.startRecording()")
+        println("ConnectionService.startRecording(): on $mName")
         try {
             val payloadPipe = ParcelFileDescriptor.createPipe()
 
@@ -270,14 +367,14 @@ class ConnectionService : Service(), IConnection {
             mRecorder = AudioRecorder(payloadPipe[1])
             mRecorder!!.start()
         } catch (e: IOException) {
-            println("Connection.startRecording() failed $e")
+            println("Connection.startRecording(): on $mName failed $e")
         }
 
     }
 
     /** Stops streaming sound from the microphone. */
     private fun stopRecording() {
-        println("stopRecording()")
+        println("stopRecording(): on $mName")
         if (mRecorder != null) {
             mRecorder!!.stop()
             mRecorder = null
@@ -291,7 +388,7 @@ class ConnectionService : Service(), IConnection {
 
     /** Stops all currently streaming audio tracks. */
     private fun stopPlaying() {
-        println("stopPlaying()")
+        println("stopPlaying(): on $mName")
         if (mAudioPlayer != null) {
             mAudioPlayer!!.stop()
             mAudioPlayer = null

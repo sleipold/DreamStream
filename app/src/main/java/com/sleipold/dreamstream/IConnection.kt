@@ -100,7 +100,7 @@ interface IConnection {
             mConnectionLifecycleCallback,
             advertisingOptions.build()
         )?.addOnSuccessListener {
-            println("Now advertising endpoint $localEndpointName on service id $mServiceId")
+            println("Now advertising endpoint $localEndpointName on serviceId $mServiceId")
             onAdvertisingStarted()
         }?.addOnFailureListener { e ->
             mIsAdvertising = false
@@ -198,7 +198,7 @@ interface IConnection {
         mEstablishedConnections.clear()
     }
 
-    // resets and clears all state in Nearby Connections 
+    // resets and clears all pState in Nearby Connections
     fun stopAllEndpoints() {
         mConnectionsClient!!.stopAllEndpoints()
         mIsAdvertising = false
