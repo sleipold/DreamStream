@@ -20,6 +20,7 @@ import com.google.android.gms.vision.CameraSource
 import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.zxing.WriterException
 import com.sleipold.dreamstream.IConnection.State
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -363,7 +364,7 @@ class Connection : AppCompatActivity() {
     }
 
     private fun setServiceIdFromUserInput() {
-        val builder = AlertDialog.Builder(this)
+        val builder = MaterialAlertDialogBuilder(this)
         builder.setTitle("Please enter a connection name:")
 
         // Set up the input
