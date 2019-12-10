@@ -24,7 +24,7 @@ class RoleSelection : AppCompatActivity() {
         btnRoleSender.setOnClickListener {
             // open connection activity as sender
             val intent = Intent(this, Connection::class.java).apply {
-                putExtra("role","sender")
+                putExtra("role", "sender")
             }
             startActivity(intent)
         }
@@ -38,7 +38,7 @@ class RoleSelection : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // onClick listener for menu
-        when(item.itemId) {
+        when (item.itemId) {
             R.id.home -> {
                 // home icon got clicked -> open welcome activity
                 val homeIntent = Intent(this, Welcome::class.java)

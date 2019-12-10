@@ -30,7 +30,7 @@ class Welcome : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // onClick listener for menu
-        when(item.itemId) {
+        when (item.itemId) {
             R.id.settings -> {
                 // gear icon got clicked -> open settings activity
                 val intent = Intent(this, Settings::class.java)

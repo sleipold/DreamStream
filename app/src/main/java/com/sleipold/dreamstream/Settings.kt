@@ -29,7 +29,8 @@ class Settings : AppCompatActivity() {
 
         mContext = applicationContext
 
-        mSharedPrefs = mContext.getSharedPreferences(R.string.sharedPref.toString(), Context.MODE_PRIVATE)
+        mSharedPrefs =
+            mContext.getSharedPreferences(R.string.sharedPref.toString(), Context.MODE_PRIVATE)
 
         /* Components */
         cVibration = findViewById(R.id.swVibration)
@@ -37,7 +38,7 @@ class Settings : AppCompatActivity() {
         cSaveSettings = findViewById(R.id.btnSaveSettings)
 
         /* Listener */
-        cSaveSettings.setOnClickListener{
+        cSaveSettings.setOnClickListener {
             val editor = mSharedPrefs.edit()
             editor.putBoolean("vibration", cVibration.isChecked)
             editor.putInt("warnlevel", cWarnLevel.progress)
@@ -62,7 +63,7 @@ class Settings : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // onClick listener for menu
-        when(item.itemId) {
+        when (item.itemId) {
             R.id.home -> {
                 // home icon got clicked -> open welcome activity
                 val homeIntent = Intent(this, Welcome::class.java)
