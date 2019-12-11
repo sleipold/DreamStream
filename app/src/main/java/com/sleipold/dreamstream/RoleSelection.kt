@@ -43,7 +43,6 @@ class RoleSelection : AppCompatActivity() {
                 // home icon got clicked -> open welcome activity
                 val homeIntent = Intent(this, Welcome::class.java)
                 homeIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                // TODO: reset running connection
                 startActivity(homeIntent)
             }
 

@@ -143,6 +143,14 @@ class ConnectionService : Service(), IConnection {
         // set the media volume to max and store original volume
         mVolumeControlStream = AudioManager.STREAM_MUSIC
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        // muting all other audio streams
+        audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, true)
+        audioManager.setStreamMute(AudioManager.STREAM_ALARM, true)
+        audioManager.setStreamMute(AudioManager.STREAM_NOTIFICATION, true)
+        audioManager.setStreamMute(AudioManager.STREAM_RING, true)
+        audioManager.setStreamMute(AudioManager.STREAM_VOICE_CALL, true)
+
         mOriginalVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
         audioManager.setStreamVolume(
             AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0
@@ -194,6 +202,14 @@ class ConnectionService : Service(), IConnection {
     override fun onDestroy() {
         // restore the original volume
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        // unmuting all other audio streams
+        audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, false)
+        audioManager.setStreamMute(AudioManager.STREAM_ALARM, false)
+        audioManager.setStreamMute(AudioManager.STREAM_NOTIFICATION, false)
+        audioManager.setStreamMute(AudioManager.STREAM_RING, false)
+        audioManager.setStreamMute(AudioManager.STREAM_VOICE_CALL, false)
+
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, mOriginalVolume, 0)
         mVolumeControlStream = AudioManager.USE_DEFAULT_STREAM_TYPE
 
