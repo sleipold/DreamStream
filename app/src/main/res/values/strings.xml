@@ -26,4 +26,5 @@
     <string name="scan_qr_code_with_sender_device">Scan QR-Code with sending device</string>
     <string name="service_id_must_not_be_empty">Connection name must not be empty</string>
     <string name="disconnect">Disconnect</string>
+    <string name="threshold">Threshold</string>
 </resources>
