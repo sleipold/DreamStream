@@ -27,4 +27,5 @@
     <string name="service_id_must_not_be_empty">Connection name must not be empty</string>
     <string name="disconnect">Disconnect</string>
     <string name="threshold">Threshold</string>
+    <string name="voice_message">Voice Message</string>
 </resources>

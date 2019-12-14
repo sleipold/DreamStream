@@ -223,16 +223,15 @@ class ConnectionService : Service(), IConnection {
     override fun onDestroy() {
         // restore the original volume
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-
-        // unmute all other audio streams
-        audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, false)
-        audioManager.setStreamMute(AudioManager.STREAM_ALARM, false)
-        audioManager.setStreamMute(AudioManager.STREAM_NOTIFICATION, false)
-        audioManager.setStreamMute(AudioManager.STREAM_RING, false)
-        audioManager.setStreamMute(AudioManager.STREAM_VOICE_CALL, false)
-
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, mOriginalVolume, 0)
         mVolumeControlStream = AudioManager.USE_DEFAULT_STREAM_TYPE
+
+        // unmute all other audio streams
+        //audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, false)
+        audioManager.setStreamMute(AudioManager.STREAM_ALARM, false)
+        //audioManager.setStreamMute(AudioManager.STREAM_NOTIFICATION, false)
+        //audioManager.setStreamMute(AudioManager.STREAM_RING, false)
+        audioManager.setStreamMute(AudioManager.STREAM_VOICE_CALL, false)
 
         if (isRecording()) {
             stopRecording()
@@ -302,7 +301,7 @@ class ConnectionService : Service(), IConnection {
                         }
                     }
                     "threshold" -> {
-                        if (mRecorder != null) {
+                        if (isRecording()) {
                             // sender
                             // set audio threshold according to receivers seekbar
                             mRecorder!!.mAudioRecordThreshold = parts[1].toInt()
@@ -374,8 +373,8 @@ class ConnectionService : Service(), IConnection {
 
         mState = pState
         println("ConnectionService: State of $mName set to $mState")
-        onNewMessage(mState)
         onStateChanged(mState)
+        onNewMessage(mState)
     }
 
     private fun onStateChanged(pState: State) {
