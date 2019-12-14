@@ -26,7 +26,8 @@ open class AudioPlayer constructor(inputStream: InputStream, context: Context) {
 
     private val mContext: Context = context
 
-    private val mSharedPrefs: SharedPreferences = mContext.getSharedPreferences(R.string.sharedPref.toString(), Context.MODE_PRIVATE)
+    private val mSharedPrefs: SharedPreferences =
+        mContext.getSharedPreferences(R.string.sharedPref.toString(), Context.MODE_PRIVATE)
 
     /**
      * If true, the background thread will continue to loop and play audio. Once false, the thread
@@ -77,9 +78,15 @@ open class AudioPlayer constructor(inputStream: InputStream, context: Context) {
                         // calc amplitude and check for vibrate setting
                         val vibration = mSharedPrefs.getBoolean("vibration", false)
                         if (vibration && volume >= mSharedPrefs.getInt("warnlevel", 100)) {
-                            val vibrator = mContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                            val vibrator =
+                                mContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                             if (Build.VERSION.SDK_INT >= 26) {
-                                vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                                vibrator.vibrate(
+                                    VibrationEffect.createOneShot(
+                                        100,
+                                        VibrationEffect.DEFAULT_AMPLITUDE
+                                    )
+                                )
                             } else {
                                 vibrator.vibrate(100)
                             }

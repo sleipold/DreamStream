@@ -24,5 +24,7 @@
     <string name="qr_code_placeholder">QR-Code placeholder</string>
     <string name="no_qr_code_detected">No QR-Code detected</string>
     <string name="scan_qr_code_with_sender_device">Scan QR-Code with sending device</string>
-    <string name="service_id_must_not_be_empty">mServiceId (connection name) must not be empty</string>
+    <string name="service_id_must_not_be_empty">Connection name must not be empty</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="threshold">Threshold</string>
 </resources>
