@@ -57,10 +57,6 @@ class Connection : AppCompatActivity() {
     private lateinit var cAudioRecordThreshold: SeekBar
     private lateinit var cQrCode: ImageView
     private lateinit var cQrCodeInfo: TextView
-    //TODO: #10 add button to activate recording to send voice message from receiver to sender
-    // pressed: enable recorder and disable player at receiver
-    // pressed again: disable recorder and enable player at receiver
-    // and vice versa for sender
     private lateinit var cVoiceMsg: Button
 
     // sender
@@ -92,6 +88,15 @@ class Connection : AppCompatActivity() {
         cQrCodeValue = findViewById(R.id.txtQrValue)
 
         cRoleName.text = mName
+
+        mDisposable =
+            EventBus.subscribe<StateChanged>()
+                // receive event on main thread
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe {
+                    println("$mName: event received: $it")
+                    setState(it.pState)
+                }
 
         when (mName) {
             "receiver" -> {
@@ -130,38 +135,16 @@ class Connection : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    override fun onStart() {
-        super.onStart()
 
         setState(State.AVAILABLE)
     }
 
-    override fun onPause() {
-        super.onPause()
-
+    override fun onDestroy() {
+        super.onDestroy()
         mDisposable?.dispose()
 
         if (mName == "sender") {
             mCameraSource!!.release()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-
-        mDisposable =
-            EventBus.subscribe<StateChanged>()
-                // receive event on main thread
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe {
-                    println("$mName: event received: $it")
-                    setState(it.pState)
-                }
-
-        if (mName == "sender") {
-            readQrCode()
         }
     }
 
@@ -245,11 +228,10 @@ class Connection : AppCompatActivity() {
                 cCurrentState.setText(R.string.state_searching)
             }
             State.CONNECTED -> {
-                //TODO: if devices are searching/connected and activity/app gets closed
-                // remember state to continue from there on next startup
                 cCurrentState.setText(R.string.state_connected)
                 cHandleConnection.setText(R.string.disconnect)
                 cHandleConnection.isVisible = true
+
                 when (mName) {
                     "receiver" -> {
                         cAudioRecordThreshold.progress = 50

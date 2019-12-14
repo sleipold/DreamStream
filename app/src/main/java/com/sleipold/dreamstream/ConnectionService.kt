@@ -373,26 +373,23 @@ class ConnectionService : Service(), IConnection {
         }
 
         mState = pState
-        println("ConnectionService: State of $mName set to $pState")
-        onStateChanged(pState)
+        println("ConnectionService: State of $mName set to $mState")
+        onNewMessage(mState)
+        onStateChanged(mState)
     }
 
-    private fun onStateChanged(newState: State) {
+    private fun onStateChanged(pState: State) {
         // update nearby connections to the new pState
-
-        when (newState) {
+        when (pState) {
             State.AVAILABLE -> {
                 disconnectFromAllEndpoints()
-                onNewMessage(State.AVAILABLE)
             }
             State.SEARCHING -> {
                 disconnectFromAllEndpoints()
-                onNewMessage(State.SEARCHING)
                 startDiscovering()
                 startAdvertising()
             }
             State.CONNECTED -> {
-                onNewMessage(State.CONNECTED)
                 stopDiscovering()
                 stopAdvertising()
                 when (mName) {
@@ -401,9 +398,7 @@ class ConnectionService : Service(), IConnection {
                     }
                 }
             }
-            State.UNKNOWN -> {
-                onNewMessage(State.UNKNOWN)
-            }
+            State.UNKNOWN -> {}
         }
     }
 
