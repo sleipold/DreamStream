@@ -22,6 +22,7 @@ import java.io.IOException
 import java.util.*
 
 data class ThresholdChanged(val pThreshold: Int)
+data class RecordVoiceMsgChanged(val pIsRecordingVoiceMsg: Boolean)
 
 class ConnectionService : Service(), IConnection {
 
@@ -30,7 +31,8 @@ class ConnectionService : Service(), IConnection {
     private var mIntent: Intent? = null
     private lateinit var mContext: Context
     private val mChannelId = "ForegroundServiceChannel"
-    private var mDisposable: Disposable? = null
+    private var mDisposableThreshold: Disposable? = null
+    private var mDisposableVoiceMsg: Disposable? = null
 
     // Interface properties
 
@@ -128,6 +130,7 @@ class ConnectionService : Service(), IConnection {
     // properties
 
     private var mState = State.UNKNOWN
+    private var mReceiverIsRecordingVoiceMsg = false
 
     // Service functions
 
@@ -156,13 +159,31 @@ class ConnectionService : Service(), IConnection {
             AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0
         )
 
-        mDisposable =
+        mDisposableThreshold =
             EventBus.subscribe<ThresholdChanged>()
                 // receive event on main thread
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe {
                     println("$mName: event received: $it")
-                    send(Payload.fromBytes(it.pThreshold.toString().toByteArray()))
+                    send(Payload.fromBytes(("threshold;" + it.pThreshold.toString()).toByteArray()))
+                }
+
+        mDisposableVoiceMsg =
+            EventBus.subscribe<RecordVoiceMsgChanged>()
+                // receive event on main thread
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe {
+                    println("$mName: event received: $it")
+                    mReceiverIsRecordingVoiceMsg = it.pIsRecordingVoiceMsg
+                    // disable player and enable recorder (at receiver)
+                    if (mReceiverIsRecordingVoiceMsg && mAudioPlayer != null && mAudioPlayer!!.isPlaying()) {
+                        stopPlaying()
+                        startRecording()
+                    } else {
+                        // disable recorder and enable player (at receiver)
+                        stopRecording()
+                    }
+                    send(Payload.fromBytes(("voice;" + it.pIsRecordingVoiceMsg.toString()).toByteArray()))
                 }
 
         val contentTitle = "ConnectionService"
@@ -203,7 +224,7 @@ class ConnectionService : Service(), IConnection {
         // restore the original volume
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
-        // unmuting all other audio streams
+        // unmute all other audio streams
         audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, false)
         audioManager.setStreamMute(AudioManager.STREAM_ALARM, false)
         audioManager.setStreamMute(AudioManager.STREAM_NOTIFICATION, false)
@@ -221,7 +242,8 @@ class ConnectionService : Service(), IConnection {
             stopPlaying()
         }
 
-        mDisposable?.dispose()
+        mDisposableThreshold?.dispose()
+        mDisposableVoiceMsg?.dispose()
 
         disconnectFromAllEndpoints()
         stopAllEndpoints()
@@ -253,20 +275,39 @@ class ConnectionService : Service(), IConnection {
                     mAudioPlayer = null
                 }
 
-                val player = object : AudioPlayer(payload.asStream()!!.asInputStream(), mContext) {
-                    @WorkerThread
-                    override fun onFinish() {
-                        mAudioPlayer = null
+                val player =
+                    object : AudioPlayer(payload.asStream()!!.asInputStream(), mContext) {
+                        @WorkerThread
+                        override fun onFinish() {
+                            mAudioPlayer = null
+                        }
                     }
-                }
                 mAudioPlayer = player
                 player.start()
             }
 
             Payload.Type.BYTES -> {
-                if (mRecorder != null) {
-                    // set audio threshold according to receivers seekbar
-                    mRecorder!!.mAudioRecordThreshold = String(payload.asBytes()!!).toInt()
+                val receivedBytes = payload.asBytes()
+                val parts = String(receivedBytes!!).split(";")
+                when (parts[0]) {
+                    "voice" -> {
+                        mReceiverIsRecordingVoiceMsg = parts[1].toBoolean()
+                        if (mReceiverIsRecordingVoiceMsg) {
+                            // disable recorder and enable player (at sender)
+                            stopRecording()
+                        } else {
+                            // disable player and enable recorder (at sender)
+                            stopPlaying()
+                            startRecording()
+                        }
+                    }
+                    "threshold" -> {
+                        if (mRecorder != null) {
+                            // sender
+                            // set audio threshold according to receivers seekbar
+                            mRecorder!!.mAudioRecordThreshold = parts[1].toInt()
+                        }
+                    }
                 }
             }
         }
@@ -323,7 +364,7 @@ class ConnectionService : Service(), IConnection {
         }
     }
 
-    // functions
+// functions
 
     private fun setState(pState: State) {
         if (mState == pState) {

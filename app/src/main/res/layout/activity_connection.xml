@@ -94,5 +94,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/sbAudioRecordThreshold" />
 
+    <Button
+        android:id="@+id/btnVoiceMsg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:icon="@android:drawable/ic_btn_speak_now"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/svScreen"
+        app:layout_constraintTop_toTopOf="@+id/svScreen" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

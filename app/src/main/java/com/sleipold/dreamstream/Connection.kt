@@ -39,6 +39,7 @@ class Connection : AppCompatActivity() {
     private lateinit var mServiceId: String
 
     private var mState = State.UNKNOWN
+    private var mIsRecordingVoiceMsg = false
 
     private var mDisposable: Disposable? = null
 
@@ -56,6 +57,12 @@ class Connection : AppCompatActivity() {
     private lateinit var cAudioRecordThreshold: SeekBar
     private lateinit var cQrCode: ImageView
     private lateinit var cQrCodeInfo: TextView
+    //TODO: #10 add button to activate recording to send voice message from receiver to sender
+    // pressed: enable recorder and disable player at receiver
+    // pressed again: disable recorder and enable player at receiver
+    // and vice versa for sender
+    private lateinit var cVoiceMsg: Button
+
     // sender
     private lateinit var cCamera: SurfaceView
     private lateinit var cQrCodeValue: TextView
@@ -78,6 +85,7 @@ class Connection : AppCompatActivity() {
         cAudioRecordThreshold = findViewById(R.id.sbAudioRecordThreshold)
         cQrCode = findViewById(R.id.ivQrImage)
         cQrCodeInfo = findViewById(R.id.txtScannerInfo)
+        cVoiceMsg = findViewById(R.id.btnVoiceMsg)
 
         // used by sender
         cCamera = findViewById(R.id.svScreen)
@@ -103,6 +111,11 @@ class Connection : AppCompatActivity() {
                         onNewMessage(seekBar.progress)
                     }
                 })
+
+                cVoiceMsg.setOnClickListener {
+                    mIsRecordingVoiceMsg = !mIsRecordingVoiceMsg
+                    onNewMessage(mIsRecordingVoiceMsg)
+                }
             }
         }
 
@@ -192,6 +205,7 @@ class Connection : AppCompatActivity() {
         cAudioRecordThreshold.isVisible = false
         cQrCode.isVisible = false
         cQrCodeInfo.isVisible = false
+        cVoiceMsg.isVisible = false
 
         when (newState) {
             State.AVAILABLE -> {
@@ -240,6 +254,7 @@ class Connection : AppCompatActivity() {
                     "receiver" -> {
                         cAudioRecordThreshold.progress = 50
                         cAudioRecordThreshold.isVisible = true
+                        cVoiceMsg.isVisible = true
                         cQrCode.isVisible = false
                         cQrCodeInfo.isVisible = false
                     }
@@ -398,6 +413,11 @@ class Connection : AppCompatActivity() {
 
     private fun onNewMessage(pThreshold: Int) {
         EventBus.post(ThresholdChanged(pThreshold))
+    }
+
+    private fun onNewMessage(pRecordingVoiceMsg: Boolean) {
+        // send message from activity to service
+        EventBus.post(RecordVoiceMsgChanged(pRecordingVoiceMsg))
     }
 
 }
