@@ -39,7 +39,7 @@
 
         <activity android:name=".Welcome">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />W
+                <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -47,7 +47,8 @@
             android:name=".RoleSelection"
             android:parentActivityName=".Welcome" />
         <activity android:name=".Settings" />
-        <activity android:name=".Connection" />
+        <activity android:name=".Connection"
+            android:launchMode="singleTask" />
 
         <meta-data
             android:name="com.google.android.gms.vision.DEPENDENCIES"
