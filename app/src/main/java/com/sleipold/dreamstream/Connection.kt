@@ -1,7 +1,6 @@
 package com.sleipold.dreamstream
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -27,6 +26,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_connection.*
 import java.io.IOException
+import java.util.*
 
 data class StateChanged(val pState: State)
 
@@ -362,7 +362,7 @@ class Connection : AppCompatActivity() {
 
     private fun setServiceIdFromUserInput() {
         val builder = MaterialAlertDialogBuilder(this)
-        builder.setTitle("Please enter a connection name:")
+        builder.setTitle("Enter a connection name:")
 
         // Set up the input
         val input = EditText(this)
@@ -373,6 +373,12 @@ class Connection : AppCompatActivity() {
         builder.setPositiveButton("OK") { _, _ ->
             run {
                 mServiceId = input.text.toString()
+
+                if (mServiceId.isEmpty()) {
+                    val uid = UUID.randomUUID().toString()
+                    mServiceId = "dreamstream$uid"
+                }
+
                 mQrCodeBitmap = getQrCode()
                 if (mQrCodeBitmap != null) {
                     cQrCode.setImageBitmap(mQrCodeBitmap)
@@ -380,13 +386,6 @@ class Connection : AppCompatActivity() {
                     cQrCodeInfo.isVisible = true
                     setState(State.SEARCHING)
                 }
-            }
-        }
-        builder.setNegativeButton("Cancel") { dialog, _ ->
-            run {
-                dialog.cancel()
-                cQrCodeInfo.setText(R.string.service_id_must_not_be_empty)
-                cQrCodeInfo.isVisible = true
             }
         }
 
