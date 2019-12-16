@@ -53,6 +53,7 @@ class Connection : AppCompatActivity() {
     private lateinit var cCurrentState: TextView
     private lateinit var cRoleName: TextView
     private lateinit var cHandleConnection: Button
+
     // receiver
     private lateinit var cAudioRecordThreshold: SeekBar
     private lateinit var cQrCode: ImageView
@@ -70,6 +71,8 @@ class Connection : AppCompatActivity() {
         // member 
         mContext = applicationContext
         mName = intent.getStringExtra("role")!!
+        val uid = UUID.randomUUID().toString()
+        mServiceId = "dreamstream$uid"
 
         // components 
         // used by both
@@ -368,17 +371,14 @@ class Connection : AppCompatActivity() {
         val input = EditText(this)
         input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_NORMAL
         builder.setView(input)
+        builder.setCancelable(false)
 
         // Set up the buttons
         builder.setPositiveButton("OK") { _, _ ->
             run {
-                mServiceId = input.text.toString()
-
-                if (mServiceId.isEmpty()) {
-                    val uid = UUID.randomUUID().toString()
-                    mServiceId = "dreamstream$uid"
+                if (input.text.toString().isNotEmpty()) {
+                    mServiceId = input.text.toString()
                 }
-
                 mQrCodeBitmap = getQrCode()
                 if (mQrCodeBitmap != null) {
                     cQrCode.setImageBitmap(mQrCodeBitmap)
