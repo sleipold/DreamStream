@@ -142,6 +142,10 @@ class Connection : AppCompatActivity() {
         setState(State.AVAILABLE)
     }
 
+    override fun onBackPressed() {
+        moveTaskToBack(true)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         mDisposable?.dispose()
@@ -160,9 +164,7 @@ class Connection : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.home -> {
-                // home icon got clicked -> open welcome activity
                 val homeIntent = Intent(this, Welcome::class.java)
-                homeIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 startActivity(homeIntent)
             }
 
@@ -247,6 +249,8 @@ class Connection : AppCompatActivity() {
             }
             State.UNKNOWN -> {
                 cCurrentState.setText(R.string.state_unknown)
+                // stops service when clicked -> onDestroy of service is called which closes nearby connections
+                Intent(this, ConnectionService::class.java).also { intent -> stopService(intent) }
             }
         }
     }
