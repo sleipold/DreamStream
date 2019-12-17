@@ -388,6 +388,11 @@ class Connection : AppCompatActivity() {
                 }
             }
         }
+        builder.setNegativeButton("Close") { _, _ ->
+            run {
+                finish()
+            }
+        }
 
         builder.show()
     }
