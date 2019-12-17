@@ -20,6 +20,7 @@ import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.zxing.WriterException
 import com.sleipold.dreamstream.IConnection.State
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -58,7 +59,7 @@ class Connection : AppCompatActivity() {
     private lateinit var cAudioRecordThreshold: SeekBar
     private lateinit var cQrCode: ImageView
     private lateinit var cQrCodeInfo: TextView
-    private lateinit var cVoiceMsg: Button
+    private lateinit var cVoiceMsg: FloatingActionButton
 
     // sender
     private lateinit var cCamera: SurfaceView
