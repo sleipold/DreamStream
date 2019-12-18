@@ -233,6 +233,12 @@ class ConnectionService : Service(), IConnection {
         //audioManager.setStreamMute(AudioManager.STREAM_RING, false)
         audioManager.setStreamMute(AudioManager.STREAM_VOICE_CALL, false)
 
+        mDisposableThreshold?.dispose()
+        mDisposableVoiceMsg?.dispose()
+
+        disconnectFromAllEndpoints()
+        stopAllEndpoints()
+
         if (isRecording()) {
             stopRecording()
         }
@@ -240,12 +246,6 @@ class ConnectionService : Service(), IConnection {
         if (isPlaying()) {
             stopPlaying()
         }
-
-        mDisposableThreshold?.dispose()
-        mDisposableVoiceMsg?.dispose()
-
-        disconnectFromAllEndpoints()
-        stopAllEndpoints()
 
         println("ConnectionService destroyed: on $mName")
     }
@@ -373,8 +373,8 @@ class ConnectionService : Service(), IConnection {
 
         mState = pState
         println("ConnectionService: State of $mName set to $mState")
-        onStateChanged(mState)
         onNewMessage(mState)
+        onStateChanged(mState)
     }
 
     private fun onStateChanged(pState: State) {

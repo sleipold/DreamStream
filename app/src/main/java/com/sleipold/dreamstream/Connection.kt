@@ -170,6 +170,8 @@ class Connection : AppCompatActivity() {
         when (item.itemId) {
             R.id.home -> {
                 val homeIntent = Intent(this, Welcome::class.java)
+                if (!isServiceRunning(ConnectionService::class.java))
+                    homeIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 startActivity(homeIntent)
             }
 
