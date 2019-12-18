@@ -1,6 +1,7 @@
 package com.sleipold.dreamstream
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -144,7 +145,10 @@ class Connection : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        moveTaskToBack(true)
+        if (isServiceRunning(ConnectionService::class.java))
+            moveTaskToBack(true)
+        else
+            super.onBackPressed()
     }
 
     override fun onDestroy() {
@@ -400,6 +404,16 @@ class Connection : AppCompatActivity() {
         }
 
         builder.show()
+    }
+
+    private fun isServiceRunning(serviceClass:Class<*>):Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun onNewMessage(pThreshold: Int) {

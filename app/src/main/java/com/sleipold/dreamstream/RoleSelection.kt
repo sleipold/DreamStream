@@ -1,10 +1,13 @@
 package com.sleipold.dreamstream
 
+import android.app.ActivityManager
+import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
 import android.content.Intent
 import android.view.Menu
+import androidx.core.view.isVisible
 import kotlinx.android.synthetic.main.activity_role_selection.*
 
 class RoleSelection : AppCompatActivity() {
@@ -12,6 +15,13 @@ class RoleSelection : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_role_selection)
+
+        if (isServiceRunning(ConnectionService::class.java)) {
+            // resume connection activity
+            val intent = Intent(this, Connection::class.java)
+            startActivity(intent)
+
+        }
 
         btnRoleReceiver.setOnClickListener {
             // open connection activity as receiver
@@ -55,4 +65,15 @@ class RoleSelection : AppCompatActivity() {
         }
         return super.onOptionsItemSelected(item)
     }
+
+    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
+    }
+
 }

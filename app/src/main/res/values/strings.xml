@@ -28,4 +28,5 @@
     <string name="disconnect">Disconnect</string>
     <string name="threshold">Threshold</string>
     <string name="voice_message">Voice Message</string>
+    <string name="continue_as_selected_role">Continue as selected Role</string>
 </resources>
