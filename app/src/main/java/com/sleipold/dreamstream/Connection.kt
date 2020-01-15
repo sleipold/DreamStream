@@ -124,6 +124,11 @@ class Connection : AppCompatActivity() {
 
                 cVoiceMsg.setOnClickListener {
                     mIsRecordingVoiceMsg = !mIsRecordingVoiceMsg
+                    if (mIsRecordingVoiceMsg) {
+                        cVoiceMsg.backgroundTintList = resources.getColorStateList(R.color.primary_light)
+                    } else {
+                        cVoiceMsg.backgroundTintList = resources.getColorStateList(R.color.primary)
+                    }
                     onNewMessage(mIsRecordingVoiceMsg)
                 }
             }
